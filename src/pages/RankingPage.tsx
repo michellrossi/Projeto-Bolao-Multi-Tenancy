@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { db } from '../lib/firebase';
-import { collection, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, getDocs, getDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { calculatePoints } from '../lib/scoring';
 import { Trophy, TrendingUp, TrendingDown, Minus, Crown } from 'lucide-react';
