@@ -121,6 +121,12 @@ export function Header() {
                       className="absolute top-14 right-0 w-48 glass-dark rounded-2xl border border-white/10 shadow-2xl overflow-hidden z-[70] py-1"
                     >
                       <button 
+                        onClick={() => { navigate('/ligas'); setShowProfileMenu(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-primary transition-all border-b border-white/5"
+                      >
+                        <Users size={14} /> Trocar Liga
+                      </button>
+                      <button 
                         onClick={() => { setShowAvatarSelector(true); setShowProfileMenu(false); }}
                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-primary transition-all border-b border-white/5"
                       >

@@ -13,6 +13,7 @@ const TABS = [...WORLD_CUP_2026_ROUNDS.map(r => r.name), "Mata-Mata"];
 
 export default function PredictionsPage() {
   const { user, isApproved } = useAuth();
+  const currentLeagueId = localStorage.getItem('currentLeagueId');
   const [activeTab, setActiveTab] = useState("1ª Rodada");
   const [predictions, setPredictions] = useState<Record<string, { home: number; away: number }>>({});
   const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
@@ -27,7 +28,7 @@ export default function PredictionsPage() {
   );
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !currentLeagueId) return;
 
     const unsubResults = onSnapshot(collection(db, 'results'), (snapshot) => {
       const data: any = {};
@@ -35,7 +36,7 @@ export default function PredictionsPage() {
       setResults(data);
     });
 
-    const unsubPreds = onSnapshot(doc(db, 'predictions', user.uid), (doc) => {
+    const unsubPreds = onSnapshot(doc(db, 'leagues', currentLeagueId, 'predictions', user.uid), (doc) => {
       if (doc.exists()) {
         setPredictions(doc.data().matches || {});
       }
@@ -49,10 +50,10 @@ export default function PredictionsPage() {
   }, [user]);
 
   const handleSavePrediction = async (matchId: string, home: number, away: number) => {
-    if (!user || !isApproved) return;
+    if (!user || !isApproved || !currentLeagueId) return;
     try {
       const newPredictions = { ...predictions, [matchId]: { home, away } };
-      await setDoc(doc(db, 'predictions', user.uid), { matches: newPredictions }, { merge: true });
+      await setDoc(doc(db, 'leagues', currentLeagueId, 'predictions', user.uid), { matches: newPredictions }, { merge: true });
     } catch (error) {
       console.error("Error saving prediction:", error);
     }

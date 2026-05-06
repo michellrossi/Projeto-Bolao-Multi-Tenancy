@@ -17,19 +17,30 @@ interface UserRanking {
 
 export default function RankingPage() {
   const { user: currentUser } = useAuth();
+  const currentLeagueId = localStorage.getItem('currentLeagueId');
   const [rankings, setRankings] = useState<UserRanking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [leagueName, setLeagueName] = useState('');
 
   useEffect(() => {
+    if (!currentLeagueId) return;
+
     // 1. Fetch all results
     const unsubResults = onSnapshot(collection(db, 'results'), async (resultsSnapshot) => {
       const results: any = {};
       resultsSnapshot.forEach(doc => results[doc.id] = doc.data());
 
-      // 2. Fetch all data
+      // 2. Fetch League and Data
       try {
+        const leagueDoc = await getDoc(doc(db, 'leagues', currentLeagueId));
+        if (!leagueDoc.exists()) return;
+        
+        const leagueData = leagueDoc.data();
+        setLeagueName(leagueData.name);
+        const members: string[] = leagueData.members || [];
+
         const [predsSnapshot, usersSnapshot] = await Promise.all([
-          getDocs(collection(db, 'predictions')),
+          getDocs(collection(db, 'leagues', currentLeagueId, 'predictions')),
           getDocs(collection(db, 'users'))
         ]);
         
@@ -40,11 +51,11 @@ export default function RankingPage() {
 
         usersSnapshot.forEach((userDoc) => {
           const userData = userDoc.data();
-          
-          // Only show approved users
-          if (userData.approved !== true) return;
-
           const userId = userDoc.id;
+          
+          // Only show members of this league
+          if (!members.includes(userId)) return;
+
           const userPreds = allPredictions[userId] || {};
 
           let totalPoints = 0;
@@ -84,7 +95,7 @@ export default function RankingPage() {
     });
 
     return () => unsubResults();
-  }, [currentUser]);
+  }, [currentUser, currentLeagueId]);
 
   if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
 
@@ -96,9 +107,9 @@ export default function RankingPage() {
       {/* Header Section */}
       <div className="text-center space-y-2">
         <h1 className="text-4xl font-black text-primary font-lexend tracking-tighter uppercase">
-          Pódio dos <span className="text-white">Vencedores</span>
+          Ranking <span className="text-white">{leagueName || 'da Liga'}</span>
         </h1>
-        <p className="text-white/40 font-medium">Os melhores competidores da rodada</p>
+        <p className="text-white/40 font-medium">Os melhores competidores do seu grupo</p>
       </div>
 
       {/* Podium UI */}

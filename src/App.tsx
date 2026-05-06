@@ -1,9 +1,10 @@
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { useAuth } from './hooks/useAuth';
 
 export default function App() {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -15,6 +16,12 @@ export default function App() {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  const currentLeagueId = localStorage.getItem('currentLeagueId');
+  
+  if (!currentLeagueId && location.pathname !== '/ligas') {
+    return <Navigate to="/ligas" replace />;
   }
 
   return (

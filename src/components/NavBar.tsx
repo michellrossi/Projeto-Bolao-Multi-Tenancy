@@ -10,6 +10,7 @@ export function NavBar() {
     { name: 'Tabela', icon: BarChart3, path: '/tabela' },
     { name: 'Grupos', icon: LayoutGrid, path: '/grupos' },
     { name: 'Ranking', icon: Trophy, path: '/ranking' },
+    { name: 'Ligas', icon: Users, path: '/ligas' },
   ];
 
   if (isAdmin) {

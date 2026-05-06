@@ -9,6 +9,7 @@ import TablePage from './pages/TablePage';
 import RankingPage from './pages/RankingPage';
 import UsersPage from './pages/UsersPage';
 import RulesPage from './pages/RulesPage';
+import LeaguesPage from './pages/LeaguesPage';
 import { AuthProvider } from './hooks/useAuth';
 import './index.css';
 
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { path: '/ranking', element: <RankingPage /> },
       { path: '/usuarios', element: <UsersPage /> },
       { path: '/regras', element: <RulesPage /> },
+      { path: '/ligas', element: <LeaguesPage /> },
     ],
   },
   {
