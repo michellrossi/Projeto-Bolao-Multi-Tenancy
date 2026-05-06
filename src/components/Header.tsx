@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, LogOut, Clock, User as UserIcon, X, CheckCircle2, ChevronDown, ScrollText } from 'lucide-react';
+import { Bell, LogOut, Clock, User as UserIcon, X, CheckCircle2, ChevronDown, ScrollText, Users } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
