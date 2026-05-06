@@ -1,0 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;700&family=Outfit:wght@400;600;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-lexend: "Lexend", ui-sans-serif, system-ui, sans-serif;
+  --font-outfit: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-primary: #009440;
+  --color-secondary: #FFE16D;
+  --color-dark: #0A0F12;
+  --color-dark-lighter: #161B1E;
+}
+
+@layer base {
+  body {
+    @apply bg-[#05080a] text-white font-sans antialiased;
+    background-image: radial-gradient(circle at 50% 0%, rgba(0, 255, 133, 0.08) 0%, transparent 50%),
+                      radial-gradient(circle at 100% 100%, rgba(255, 225, 109, 0.05) 0%, transparent 50%);
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20;
+  }
+  
+  .glass-dark {
+    @apply bg-[#12181b]/80 backdrop-blur-2xl border border-white/10 shadow-2xl;
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary;
+  }
+  
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(0, 148, 64, 0.3);
+  }
+
+  .flag-3d {
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.1);
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.1) 100%);
+  }
+  
+  .glow-secondary {
+    box-shadow: 0 0 20px rgba(255, 225, 109, 0.2);
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.8; transform: scale(1.05); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 10s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-dark;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+}
+
