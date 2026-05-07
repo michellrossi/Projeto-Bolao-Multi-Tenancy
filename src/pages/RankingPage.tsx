@@ -13,6 +13,7 @@ interface UserRanking {
   points: number;
   trend: 'up' | 'down' | 'stable';
   trendValue: number;
+  isOwner?: boolean;
 }
 
 export default function RankingPage() {
@@ -82,7 +83,8 @@ export default function RankingPage() {
             photo: userData.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
             points: totalPoints,
             trend: 'stable',
-            trendValue: 0
+            trendValue: 0,
+            isOwner: userId === leagueData.ownerId
           });
         });
 
@@ -133,7 +135,9 @@ export default function RankingPage() {
               </div>
             </div>
             <div className="glass-dark p-4 rounded-2xl w-28 text-center border-white/5">
-              <p className="text-[10px] font-bold text-white/60 truncate">{top3[1].name}</p>
+              <p className="text-[10px] font-bold text-white/60 truncate">
+                {top3[1].name} {top3[1].isOwner && "(ADM)"}
+              </p>
               <p className="text-sm font-black text-primary">{top3[1].points} pts</p>
             </div>
           </div>
@@ -154,7 +158,9 @@ export default function RankingPage() {
               </div>
             </div>
             <div className="glass-dark p-6 rounded-[2rem] w-36 text-center border-primary/20 bg-primary/5">
-              <p className="text-xs font-bold text-primary truncate">{top3[0].name}</p>
+              <p className="text-xs font-bold text-primary truncate">
+                {top3[0].name} {top3[0].isOwner && "(ADM)"}
+              </p>
               <p className="text-xl font-black text-white">{top3[0].points} pts</p>
             </div>
           </div>
@@ -172,7 +178,9 @@ export default function RankingPage() {
               </div>
             </div>
             <div className="glass-dark p-4 rounded-2xl w-28 text-center border-white/5">
-              <p className="text-[10px] font-bold text-white/60 truncate">{top3[2].name}</p>
+              <p className="text-[10px] font-bold text-white/60 truncate">
+                {top3[2].name} {top3[2].isOwner && "(ADM)"}
+              </p>
               <p className="text-sm font-black text-secondary">{top3[2].points} pts</p>
             </div>
           </div>
@@ -213,7 +221,9 @@ export default function RankingPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="font-bold text-sm text-white">{player.name}</p>
+                        <p className="font-bold text-sm text-white">
+                          {player.name} {player.isOwner && <span className="text-primary ml-1 text-[10px]">(ADM)</span>}
+                        </p>
                         {isCurrentUser && (
                           <span className="text-[8px] font-black bg-primary text-dark px-1.5 py-0.5 rounded uppercase">Você</span>
                         )}

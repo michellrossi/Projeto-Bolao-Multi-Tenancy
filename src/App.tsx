@@ -1,9 +1,10 @@
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { useAuth } from './hooks/useAuth';
+import { BlockedUser } from './components/BlockedUser';
 
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, isApproved } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -18,8 +19,14 @@ export default function App() {
     return <Navigate to="/login" replace />;
   }
 
+  // Regra 5: Se bloqueado, impede acesso a tudo
+  if (!isApproved) {
+    return <BlockedUser />;
+  }
+
   const currentLeagueId = localStorage.getItem('currentLeagueId');
   
+  // Regras 2 e 3: Se não tiver liga, força ficar na página de ligas
   if (!currentLeagueId && location.pathname !== '/ligas') {
     return <Navigate to="/ligas" replace />;
   }
