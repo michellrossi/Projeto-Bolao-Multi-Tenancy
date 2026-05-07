@@ -20,15 +20,20 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isOwner, setIsOwner] = useState(false);
+  const [leagueData, setLeagueData] = useState<any>(null);
   const currentLeagueId = localStorage.getItem('currentLeagueId');
 
   useEffect(() => {
     if (!currentUser || !currentLeagueId) return;
 
     const checkOwnership = async () => {
-      const leagueDoc = await getDoc(doc(db, 'leagues', currentLeagueId));
-      if (leagueDoc.exists() && leagueDoc.data().ownerId === currentUser.uid) {
-        setIsOwner(true);
+      const lDoc = await getDoc(doc(db, 'leagues', currentLeagueId));
+      if (lDoc.exists()) {
+        const data = lDoc.data();
+        setLeagueData(data);
+        if (data.ownerId === currentUser.uid) {
+          setIsOwner(true);
+        }
       }
     };
     checkOwnership();
@@ -79,23 +84,49 @@ export default function UsersPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
+      <div className="grid md:grid-cols-3 gap-6">
+        <div className="md:col-span-2">
           <h1 className="text-3xl font-black text-white font-lexend tracking-tight uppercase mb-2">
             Gestão de <span className="text-primary">Participantes</span>
           </h1>
           <p className="text-white/50 font-medium">Aprove ou remova competidores do seu bolão.</p>
         </div>
 
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-          <input 
-            type="text"
-            placeholder="Buscar por nome ou e-mail..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-primary transition-all text-white"
-          />
-        </div>
+        {leagueData && (
+          <div className="glass-dark p-6 rounded-[2rem] border-white/5 space-y-3">
+            <div className="flex justify-between items-end">
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Ocupação do Bolão</span>
+              <span className="text-xs font-black text-white">
+                {users.length} / {leagueData.maxParticipants || 10}
+              </span>
+            </div>
+            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${(users.length / (leagueData.maxParticipants || 10)) * 100}%` }}
+                className={`h-full rounded-full ${
+                  users.length >= (leagueData.maxParticipants || 10) ? 'bg-red-500' : 'bg-primary'
+                }`}
+              />
+            </div>
+            <p className="text-[9px] font-bold text-white/20 uppercase tracking-tighter">
+              {users.length >= (leagueData.maxParticipants || 10) 
+                ? 'Limite atingido! Faça upgrade para liberar mais slots.' 
+                : `${(leagueData.maxParticipants || 10) - users.length} slots disponíveis no seu plano`}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="relative w-full">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+        <input 
+          type="text"
+          placeholder="Buscar por nome ou e-mail..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-primary transition-all text-white"
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

@@ -32,20 +32,24 @@ export function Header() {
   const [userData, setUserData] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [currentLeagueName, setCurrentLeagueName] = useState<string>('');
+  const [currentLeagueLogo, setCurrentLeagueLogo] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
     
-    // Buscar nome da liga atual
+    // Buscar nome e logo da liga atual
     if (currentLeagueId) {
       const unsubLeague = onSnapshot(doc(db, 'leagues', currentLeagueId), (doc) => {
         if (doc.exists()) {
-          setCurrentLeagueName(doc.data().name);
+          const data = doc.data();
+          setCurrentLeagueName(data.name);
+          setCurrentLeagueLogo(data.customLogo || '');
         }
       });
       return () => unsubLeague();
     } else {
       setCurrentLeagueName('');
+      setCurrentLeagueLogo('');
     }
   }, [currentLeagueId]);
 
@@ -102,7 +106,11 @@ export function Header() {
     <>
       <header className="bg-dark/80 backdrop-blur-xl flex justify-between items-center w-full px-6 h-20 fixed top-0 z-50 border-b border-white/5 shadow-2xl">
         <div className="flex items-center gap-6">
-          <img src="https://iili.io/BZG2miP.png" alt="Bolão 2026" className="h-12 w-auto object-contain" />
+          <img 
+            src={currentLeagueLogo || "https://iili.io/BZG2miP.png"} 
+            alt="Logo" 
+            className="h-12 w-auto object-contain" 
+          />
           
           <AnimatePresence>
             {currentLeagueName && (

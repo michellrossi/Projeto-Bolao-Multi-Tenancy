@@ -22,6 +22,7 @@ interface League {
   ownerId: string;
   inviteCode: string;
   members: string[];
+  maxParticipants: number;
 }
 
 export default function LeaguesPage() {
@@ -92,6 +93,7 @@ export default function LeaguesPage() {
         ownerId: user.uid,
         inviteCode: generatedCode,
         members: [user.uid],
+        maxParticipants: maxParticipantsAllowed || 10,
         createdAt: new Date().toISOString(),
       };
 
@@ -139,6 +141,12 @@ export default function LeaguesPage() {
 
       if (leagueData.members.includes(user.uid)) {
         setError('Você já faz parte desta liga.');
+        setSubmitting(false);
+        return;
+      }
+
+      if (leagueData.members.length >= (leagueData.maxParticipants || 10)) {
+        setError('Esta liga atingiu o limite de participantes do plano atual.');
         setSubmitting(false);
         return;
       }
@@ -252,8 +260,8 @@ export default function LeaguesPage() {
                   <div>
                     <h3 className="font-black text-lg text-white uppercase">{league.name}</h3>
                     <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-white/40">
-                      <span className="flex items-center gap-1">
-                        <Users size={12} /> {league.members.length} membros
+                      <span className={`flex items-center gap-1 ${league.members.length >= (league.maxParticipants || 10) ? 'text-red-400' : ''}`}>
+                        <Users size={12} /> {league.members.length} / {league.maxParticipants || 10} membros
                       </span>
                       {league.ownerId === user?.uid && (
                         <span className="flex items-center gap-1 text-primary/60">

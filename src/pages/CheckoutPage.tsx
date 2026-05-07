@@ -43,9 +43,10 @@ export default function CheckoutPage() {
         displayName: formData.name,
         photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
         createdAt: new Date().toISOString(),
-        maxLeaguesAllowed: plan.leagues,
+        maxParticipantsAllowed: plan.participants,
         hasLicense: true,
-        approved: true
+        approved: true,
+        planType: plan.name
       });
 
       // 4. Save Purchase Record
@@ -60,7 +61,7 @@ export default function CheckoutPage() {
       // 5. Save License Code for reference/validation
       await setDoc(doc(db, 'purchase_codes', code), {
         code: code,
-        maxLeagues: plan.leagues,
+        maxParticipants: plan.participants,
         usedBy: user.uid,
         usedAt: new Date().toISOString(),
         planType: plan.name,
@@ -143,13 +144,13 @@ export default function CheckoutPage() {
             <div className="h-[1px] bg-white/5 w-full" />
             <ul className="space-y-3">
               <li className="flex items-center gap-3 text-xs font-medium text-white/60">
-                <CheckCircle2 size={14} className="text-primary" /> Direito a criar {plan.leagues} bolões
+                <CheckCircle2 size={14} className="text-primary" /> Até {plan.participants} participantes por bolão
               </li>
               <li className="flex items-center gap-3 text-xs font-medium text-white/60">
-                <CheckCircle2 size={14} className="text-primary" /> Participantes ilimitados
+                <CheckCircle2 size={14} className="text-primary" /> {plan.name === 'Bronze' ? '1 Bolão ativo' : 'Bolões ilimitados'}
               </li>
               <li className="flex items-center gap-3 text-xs font-medium text-white/60">
-                <CheckCircle2 size={14} className="text-primary" /> Acesso vitalício aos bolões criados
+                <CheckCircle2 size={14} className="text-primary" /> Acesso vitalício aos dados
               </li>
             </ul>
           </div>
