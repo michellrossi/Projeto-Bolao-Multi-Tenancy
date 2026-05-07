@@ -8,6 +8,8 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isApproved: boolean;
+  hasLicense: boolean;
+  maxLeaguesAllowed: number;
   currentLeagueId: string | null;
   setLeagueId: (id: string | null) => void;
 }
@@ -17,6 +19,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: true, 
   isAdmin: false, 
   isApproved: false,
+  hasLicense: false,
+  maxLeaguesAllowed: 0,
   currentLeagueId: null,
   setLeagueId: () => {}
 });
@@ -25,6 +29,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
+  const [hasLicense, setHasLicense] = useState(false);
+  const [maxLeaguesAllowed, setMaxLeaguesAllowed] = useState(0);
   const [loading, setLoading] = useState(true);
   const [currentLeagueId, setCurrentLeagueId] = useState<string | null>(localStorage.getItem('currentLeagueId'));
 
@@ -44,30 +50,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const isGlobalAdmin = adminDoc.exists() || user.email === 'mionmic@gmail.com';
           setIsAdmin(isGlobalAdmin);
 
-          // Check Approval (Admins are always approved)
+          // Check Approval and License
           if (isGlobalAdmin) {
             setIsApproved(true);
+            setHasLicense(true);
+            setMaxLeaguesAllowed(999);
           } else {
             const userRef = doc(db, 'users', user.uid);
             const userDoc = await getDoc(userRef);
             
-            if (!userDoc.exists()) {
-              await setDoc(userRef, {
-                uid: user.uid,
-                email: user.email,
-                displayName: user.displayName || user.email?.split('@')[0],
-                photoURL: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
-                lastLogin: new Date().toISOString(),
-                approved: true
-              });
-              setIsApproved(true);
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              setIsApproved(data?.approved === true);
+              setHasLicense(data?.hasLicense === true);
+              setMaxLeaguesAllowed(data?.maxLeaguesAllowed || 0);
             } else {
-              setIsApproved(userDoc.data()?.approved === true);
+              setIsApproved(true);
+              setHasLicense(false);
+              setMaxLeaguesAllowed(0);
             }
           }
         } else {
           setIsAdmin(false);
           setIsApproved(false);
+          setHasLicense(false);
+          setMaxLeaguesAllowed(0);
           setLeagueId(null);
         }
       } catch (error) {
@@ -79,7 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, isApproved, currentLeagueId, setLeagueId }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, isApproved, hasLicense, maxLeaguesAllowed, currentLeagueId, setLeagueId }}>
       {children}
     </AuthContext.Provider>
   );

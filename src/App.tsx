@@ -27,8 +27,8 @@ export default function App() {
   const hasValidLeague = currentLeagueId && currentLeagueId !== 'null' && currentLeagueId !== 'undefined';
   
   // Regras 2 e 3: Se não tiver liga válida, força ficar na página de ligas
-  if (!hasValidLeague && location.pathname !== '/ligas') {
-    return <Navigate to="/ligas" replace />;
+  if (!hasValidLeague && location.pathname !== '/app/ligas') {
+    return <Navigate to="/app/ligas" replace />;
   }
 
   return (

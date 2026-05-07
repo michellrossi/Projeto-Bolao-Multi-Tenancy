@@ -25,8 +25,9 @@ interface League {
 }
 
 export default function LeaguesPage() {
-  const { user, setLeagueId } = useAuth();
+  const { user, setLeagueId, maxLeaguesAllowed, hasLicense } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [ownedLeaguesCount, setOwnedLeaguesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -47,11 +48,18 @@ export default function LeaguesPage() {
       const querySnapshot = await getDocs(q);
       const leagueList: League[] = [];
       let isAnyOwner = false;
+      let countOwned = 0;
+
       querySnapshot.forEach((doc) => {
         const data = doc.data() as League;
         leagueList.push({ id: doc.id, ...data });
-        if (data.ownerId === user?.uid) isAnyOwner = true;
+        if (data.ownerId === user?.uid) {
+          isAnyOwner = true;
+          countOwned++;
+        }
       });
+
+      setOwnedLeaguesCount(countOwned);
 
       if (isAnyOwner && user) {
         import('../lib/firebase').then(({ db }) => {
@@ -100,7 +108,7 @@ export default function LeaguesPage() {
       
       // Auto-select the newly created league
       setLeagueId(docRef.id);
-      navigate('/palpites');
+      navigate('/app/palpites');
     } catch (err) {
       console.error("Error creating league:", err);
       setError('Erro ao criar a liga. Tente novamente.');
@@ -145,7 +153,7 @@ export default function LeaguesPage() {
       
       // Auto-select the joined league
       setLeagueId(leagueDoc.id);
-      navigate('/palpites');
+      navigate('/app/palpites');
     } catch (err: any) {
       console.error("Error joining league details:", err);
       setError(`Erro ao entrar na liga: ${err.message || 'Tente novamente.'}`);
@@ -156,7 +164,7 @@ export default function LeaguesPage() {
 
   const selectLeague = (leagueId: string) => {
     setLeagueId(leagueId);
-    navigate('/palpites');
+    navigate('/app/palpites');
   };
 
   if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
@@ -175,16 +183,34 @@ export default function LeaguesPage() {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Create League Card */}
         <motion.button
-          whileHover={{ y: -5 }}
-          onClick={() => setShowCreateModal(true)}
-          className="flex flex-col items-center justify-center gap-6 p-10 glass-dark rounded-[3rem] border-white/5 hover:border-primary/20 transition-all group"
+          whileHover={ownedLeaguesCount < maxLeaguesAllowed ? { y: -5 } : {}}
+          onClick={() => {
+            if (ownedLeaguesCount < maxLeaguesAllowed) {
+              setShowCreateModal(true);
+            } else {
+              alert(hasLicense ? "Você atingiu o limite de bolões do seu plano." : "Apenas usuários com código de acesso podem criar bolões.");
+            }
+          }}
+          className={`flex flex-col items-center justify-center gap-6 p-10 glass-dark rounded-[3rem] border transition-all group ${
+            ownedLeaguesCount < maxLeaguesAllowed 
+              ? 'border-white/5 hover:border-primary/20' 
+              : 'border-red-500/10 opacity-60 grayscale cursor-not-allowed'
+          }`}
         >
-          <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Plus className="text-primary w-10 h-10" />
+          <div className={`w-20 h-20 rounded-3xl flex items-center justify-center transition-transform ${
+            ownedLeaguesCount < maxLeaguesAllowed ? 'bg-primary/10 group-hover:scale-110' : 'bg-white/5'
+          }`}>
+            <Plus className={`${ownedLeaguesCount < maxLeaguesAllowed ? 'text-primary' : 'text-white/20'} w-10 h-10`} />
           </div>
           <div className="text-center">
             <h2 className="text-xl font-black text-white uppercase mb-2">Criar Novo Bolão</h2>
-            <p className="text-white/40 text-sm">Seja o dono e convide sua galera</p>
+            <p className="text-white/40 text-sm">
+              {ownedLeaguesCount < maxLeaguesAllowed 
+                ? `Você pode criar mais ${maxLeaguesAllowed - ownedLeaguesCount} bolão(ões)`
+                : hasLicense 
+                  ? "Limite do plano atingido" 
+                  : "Requer código de acesso"}
+            </p>
           </div>
         </motion.button>
 

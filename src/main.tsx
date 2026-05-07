@@ -10,27 +10,37 @@ import RankingPage from './pages/RankingPage';
 import UsersPage from './pages/UsersPage';
 import RulesPage from './pages/RulesPage';
 import LeaguesPage from './pages/LeaguesPage';
+import LandingPage from './pages/LandingPage';
+import CheckoutPage from './pages/CheckoutPage';
 import { AuthProvider } from './hooks/useAuth';
 import './index.css';
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />,
-    children: [
-      { path: '/', element: <Navigate to="/palpites" /> },
-      { path: '/palpites', element: <PredictionsPage /> },
-      { path: '/tabela', element: <TablePage /> },
-      { path: '/grupos', element: <GroupsPage /> },
-      { path: '/ranking', element: <RankingPage /> },
-      { path: '/usuarios', element: <UsersPage /> },
-      { path: '/regras', element: <RulesPage /> },
-      { path: '/ligas', element: <LeaguesPage /> },
-    ],
+    element: <LandingPage />,
+  },
+  {
+    path: '/checkout',
+    element: <CheckoutPage />,
   },
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/app',
+    element: <App />,
+    children: [
+      { path: '/app', element: <Navigate to="/app/palpites" /> },
+      { path: '/app/palpites', element: <PredictionsPage /> },
+      { path: '/app/tabela', element: <TablePage /> },
+      { path: '/app/grupos', element: <GroupsPage /> },
+      { path: '/app/ranking', element: <RankingPage /> },
+      { path: '/app/usuarios', element: <UsersPage /> },
+      { path: '/app/regras', element: <RulesPage /> },
+      { path: '/app/ligas', element: <LeaguesPage /> },
+    ],
   },
 ]);
 

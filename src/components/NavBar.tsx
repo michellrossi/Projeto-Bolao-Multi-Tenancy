@@ -29,17 +29,17 @@ export function NavBar() {
   }, [user, currentLeagueId]);
 
   const links = hasValidLeague ? [
-    { name: 'Palpites', icon: CalendarDays, path: '/palpites' },
-    { name: 'Tabela', icon: BarChart3, path: '/tabela' },
-    { name: 'Grupos', icon: LayoutGrid, path: '/grupos' },
-    { name: 'Ranking', icon: Trophy, path: '/ranking' },
-    { name: 'Ligas', icon: Users, path: '/ligas' },
+    { name: 'Palpites', icon: CalendarDays, path: '/app/palpites' },
+    { name: 'Tabela', icon: BarChart3, path: '/app/tabela' },
+    { name: 'Grupos', icon: LayoutGrid, path: '/app/grupos' },
+    { name: 'Ranking', icon: Trophy, path: '/app/ranking' },
+    { name: 'Ligas', icon: Users, path: '/app/ligas' },
   ] : [
-    { name: 'Ligas', icon: Users, path: '/ligas' },
+    { name: 'Ligas', icon: Users, path: '/app/ligas' },
   ];
 
   if ((isAdmin || isOwner) && hasValidLeague) {
-    links.push({ name: 'Participantes', icon: Users, path: '/usuarios' });
+    links.push({ name: 'Participantes', icon: Users, path: '/app/usuarios' });
   }
 
   return (
