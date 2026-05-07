@@ -154,16 +154,6 @@ export default function LeaguesPage() {
     }
   };
 
-  const { user, setLeagueId } = useAuth();
-// ...
-      // Auto-select the newly created league
-      setLeagueId(docRef.id);
-      navigate('/palpites');
-// ...
-      // Auto-select the joined league
-      setLeagueId(leagueDoc.id);
-      navigate('/palpites');
-// ...
   const selectLeague = (leagueId: string) => {
     setLeagueId(leagueId);
     navigate('/palpites');
