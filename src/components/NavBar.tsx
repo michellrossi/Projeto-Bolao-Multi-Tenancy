@@ -1,10 +1,33 @@
+import { useState, useEffect } from 'react';
 import { Trophy, CalendarDays, LayoutGrid, BarChart3, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 
 export function NavBar() {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const [isOwner, setIsOwner] = useState(false);
+  const currentLeagueId = localStorage.getItem('currentLeagueId');
+
+  useEffect(() => {
+    if (!user || !currentLeagueId) {
+      setIsOwner(false);
+      return;
+    }
+
+    import('../lib/firebase').then(({ db }) => {
+      import('firebase/firestore').then(({ doc, getDoc }) => {
+        getDoc(doc(db, 'leagues', currentLeagueId)).then(snap => {
+          if (snap.exists() && snap.data().ownerId === user.uid) {
+            setIsOwner(true);
+          } else {
+            setIsOwner(false);
+          }
+        });
+      });
+    });
+  }, [user, currentLeagueId]);
+
   const links = [
     { name: 'Palpites', icon: CalendarDays, path: '/palpites' },
     { name: 'Tabela', icon: BarChart3, path: '/tabela' },
@@ -13,8 +36,8 @@ export function NavBar() {
     { name: 'Ligas', icon: Users, path: '/ligas' },
   ];
 
-  if (isAdmin) {
-    links.push({ name: 'Usuários', icon: Users, path: '/usuarios' });
+  if (isAdmin || isOwner) {
+    links.push({ name: 'Participantes', icon: Users, path: '/usuarios' });
   }
 
   return (

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../lib/firebase';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { UserCheck, UserX, ShieldCheck, Mail, Calendar, Search } from 'lucide-react';
 
@@ -15,23 +15,40 @@ interface UserData {
 }
 
 export default function UsersPage() {
-  const { isAdmin } = useAuth();
+  const { user: currentUser, isAdmin } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [isOwner, setIsOwner] = useState(false);
+  const currentLeagueId = localStorage.getItem('currentLeagueId');
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!currentUser || !currentLeagueId) return;
 
-    const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const data: UserData[] = [];
+    const checkOwnership = async () => {
+      const leagueDoc = await getDoc(doc(db, 'leagues', currentLeagueId));
+      if (leagueDoc.exists() && leagueDoc.data().ownerId === currentUser.uid) {
+        setIsOwner(true);
+      }
+    };
+    checkOwnership();
+
+    const unsub = onSnapshot(collection(db, 'users'), async (snapshot) => {
+      const allUsers: UserData[] = [];
       snapshot.forEach((doc) => {
-        const userData = doc.data() as UserData;
-        data.push(userData);
+        allUsers.push(doc.data() as UserData);
       });
-      // Sort handling missing lastLogin
-      data.sort((a, b) => (b.lastLogin || '').localeCompare(a.lastLogin || ''));
-      setUsers(data);
+
+      // Se não for admin global, filtrar apenas pelos membros da liga atual
+      let filteredData = allUsers;
+      if (!isAdmin) {
+        const leagueDoc = await getDoc(doc(db, 'leagues', currentLeagueId));
+        const members = leagueDoc.data()?.members || [];
+        filteredData = allUsers.filter(u => members.includes(u.uid));
+      }
+
+      filteredData.sort((a, b) => (b.lastLogin || '').localeCompare(a.lastLogin || ''));
+      setUsers(filteredData);
       setLoading(false);
     }, (error) => {
       console.error("Erro ao buscar usuários:", error);
@@ -39,7 +56,7 @@ export default function UsersPage() {
     });
 
     return unsub;
-  }, [isAdmin]);
+  }, [isAdmin, currentUser, currentLeagueId]);
 
   const handleToggleApproval = async (uid: string, currentStatus: boolean) => {
     try {
@@ -51,7 +68,7 @@ export default function UsersPage() {
     }
   };
 
-  if (!isAdmin) return <div className="p-20 text-center">Acesso Negado</div>;
+  if (!isAdmin && !isOwner) return <div className="p-20 text-center text-white/20 font-black uppercase tracking-widest">Acesso Negado</div>;
   if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
 
   const filteredUsers = users.filter(u => 

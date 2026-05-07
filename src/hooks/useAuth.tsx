@@ -23,13 +23,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         setUser(user);
         if (user) {
-          // Check Admin
+          // Check Global Admin (System Admin)
           const adminDoc = await getDoc(doc(db, 'admins', user.email || ''));
-          const isAdminUser = adminDoc.exists() || user.email === 'mionmic@gmail.com';
-          setIsAdmin(isAdminUser);
+          const isGlobalAdmin = adminDoc.exists() || user.email === 'mionmic@gmail.com';
+          setIsAdmin(isGlobalAdmin);
 
           // Check Approval (Admins are always approved)
-          if (isAdminUser) {
+          if (isGlobalAdmin) {
             setIsApproved(true);
           } else {
             const userRef = doc(db, 'users', user.uid);
