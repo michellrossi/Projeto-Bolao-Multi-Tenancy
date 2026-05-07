@@ -83,7 +83,6 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
           <h1 className="text-3xl font-black text-white font-lexend tracking-tight uppercase mb-2">
