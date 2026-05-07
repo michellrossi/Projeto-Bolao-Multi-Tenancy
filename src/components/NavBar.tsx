@@ -7,10 +7,11 @@ import { useAuth } from '../hooks/useAuth';
 export function NavBar() {
   const { user, isAdmin } = useAuth();
   const [isOwner, setIsOwner] = useState(false);
-  const currentLeagueId = localStorage.getItem('currentLeagueId');
+  const leagueId = localStorage.getItem('currentLeagueId');
+  const hasValidLeague = leagueId && leagueId !== 'null' && leagueId !== 'undefined';
 
   useEffect(() => {
-    if (!user || !currentLeagueId) {
+    if (!user || !leagueId) {
       setIsOwner(false);
       return;
     }
@@ -28,7 +29,7 @@ export function NavBar() {
     });
   }, [user, currentLeagueId]);
 
-  const links = currentLeagueId ? [
+  const links = hasValidLeague ? [
     { name: 'Palpites', icon: CalendarDays, path: '/palpites' },
     { name: 'Tabela', icon: BarChart3, path: '/tabela' },
     { name: 'Grupos', icon: LayoutGrid, path: '/grupos' },
@@ -38,7 +39,7 @@ export function NavBar() {
     { name: 'Ligas', icon: Users, path: '/ligas' },
   ];
 
-  if ((isAdmin || isOwner) && currentLeagueId) {
+  if ((isAdmin || isOwner) && hasValidLeague) {
     links.push({ name: 'Participantes', icon: Users, path: '/usuarios' });
   }
 

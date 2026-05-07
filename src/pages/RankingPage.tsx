@@ -24,7 +24,11 @@ export default function RankingPage() {
   const [leagueName, setLeagueName] = useState('');
 
   useEffect(() => {
-    if (!currentLeagueId) return;
+    const hasValidLeague = currentLeagueId && currentLeagueId !== 'null' && currentLeagueId !== 'undefined';
+    if (!hasValidLeague) {
+      setLoading(false);
+      return;
+    }
 
     // 1. Fetch all results
     const unsubResults = onSnapshot(collection(db, 'results'), async (resultsSnapshot) => {
@@ -254,8 +258,13 @@ export default function RankingPage() {
               );
             })
           ) : (
-            <div className="text-center py-20 glass-dark rounded-[3rem] border-white/5">
-              <p className="text-white/20 font-black uppercase tracking-widest">Nenhum palpite registrado ainda</p>
+            <div className="text-center py-20 glass-dark rounded-[3rem] border-white/5 space-y-4">
+              <Trophy className="w-12 h-12 text-white/5 mx-auto" />
+              <p className="text-white/20 font-black uppercase tracking-widest">
+                {(!currentLeagueId || currentLeagueId === 'null') 
+                  ? 'Selecione uma liga para ver o ranking' 
+                  : 'Nenhum palpite registrado ainda'}
+              </p>
             </div>
           )}
         </div>

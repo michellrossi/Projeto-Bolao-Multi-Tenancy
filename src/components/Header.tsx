@@ -139,7 +139,10 @@ export function Header() {
                         <ScrollText size={14} /> Regras
                       </button>
                       <button 
-                        onClick={() => signOut(auth)}
+                        onClick={() => {
+                          signOut(auth);
+                          localStorage.removeItem('currentLeagueId');
+                        }}
                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 text-[11px] font-black uppercase tracking-widest text-red-500 transition-all"
                       >
                         <LogOut size={14} /> Sair

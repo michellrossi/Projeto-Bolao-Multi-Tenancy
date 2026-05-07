@@ -46,9 +46,20 @@ export default function LeaguesPage() {
       const q = query(collection(db, 'leagues'), where('members', 'array-contains', user?.uid));
       const querySnapshot = await getDocs(q);
       const leagueList: League[] = [];
+      let isAnyOwner = false;
       querySnapshot.forEach((doc) => {
-        leagueList.push({ id: doc.id, ...doc.data() } as League);
+        const data = doc.data() as League;
+        leagueList.push({ id: doc.id, ...data });
+        if (data.ownerId === user?.uid) isAnyOwner = true;
       });
+
+      if (isAnyOwner && user) {
+        import('../lib/firebase').then(({ db }) => {
+          import('firebase/firestore').then(({ doc, updateDoc }) => {
+            updateDoc(doc(db, 'users', user.uid), { isOwner: true });
+          });
+        });
+      }
       setLeagues(leagueList);
     } catch (err) {
       console.error("Error fetching leagues:", err);

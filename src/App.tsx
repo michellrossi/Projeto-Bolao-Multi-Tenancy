@@ -24,10 +24,11 @@ export default function App() {
     return <BlockedUser />;
   }
 
-  const currentLeagueId = localStorage.getItem('currentLeagueId');
+  const leagueId = localStorage.getItem('currentLeagueId');
+  const hasValidLeague = leagueId && leagueId !== 'null' && leagueId !== 'undefined';
   
-  // Regras 2 e 3: Se não tiver liga, força ficar na página de ligas
-  if (!currentLeagueId && location.pathname !== '/ligas') {
+  // Regras 2 e 3: Se não tiver liga válida, força ficar na página de ligas
+  if (!hasValidLeague && location.pathname !== '/ligas') {
     return <Navigate to="/ligas" replace />;
   }
 
