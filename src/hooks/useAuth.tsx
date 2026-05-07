@@ -43,9 +43,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 displayName: user.displayName || user.email?.split('@')[0],
                 photoURL: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
                 lastLogin: new Date().toISOString(),
-                approved: false
+                approved: true
               });
-              setIsApproved(false);
+              setIsApproved(true);
             } else {
               setIsApproved(userDoc.data()?.approved === true);
             }

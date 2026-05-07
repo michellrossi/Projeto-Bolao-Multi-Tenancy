@@ -39,23 +39,30 @@ export default function RankingPage() {
         setLeagueName(leagueData.name);
         const members: string[] = leagueData.members || [];
 
-        const [predsSnapshot, usersSnapshot] = await Promise.all([
+        const [predsSnapshot] = await Promise.all([
           getDocs(collection(db, 'leagues', currentLeagueId, 'predictions')),
-          getDocs(collection(db, 'users'))
         ]);
+        
+        // Fetch only members' user documents to avoid "Missing or insufficient permissions" 
+        // when trying to read the whole users collection
+        const userDocsPromises = members.map(uid => getDoc(doc(db, 'users', uid)));
+        const usersSnapshots = await Promise.all(userDocsPromises);
+        const usersDataMap: any = {};
+        usersSnapshots.forEach(snap => {
+          if (snap.exists()) {
+            usersDataMap[snap.id] = snap.data();
+          }
+        });
         
         const allPredictions: any = {};
         predsSnapshot.forEach(doc => allPredictions[doc.id] = doc.data().matches || {});
 
         const rankingList: UserRanking[] = [];
 
-        usersSnapshot.forEach((userDoc) => {
-          const userData = userDoc.data();
-          const userId = userDoc.id;
+        members.forEach((userId) => {
+          const userData = usersDataMap[userId];
+          if (!userData) return;
           
-          // Only show members of this league
-          if (!members.includes(userId)) return;
-
           const userPreds = allPredictions[userId] || {};
 
           let totalPoints = 0;

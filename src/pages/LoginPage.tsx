@@ -110,7 +110,7 @@ export function LoginPage() {
           displayName: displayName || email.split('@')[0],
           photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}`,
           lastLogin: new Date().toISOString(),
-          approved: false
+          approved: true
         }, { merge: true });
       } else {
         const result = await signInWithEmailAndPassword(auth, email, password);

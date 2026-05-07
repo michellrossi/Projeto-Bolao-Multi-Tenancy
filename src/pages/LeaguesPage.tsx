@@ -130,9 +130,9 @@ export default function LeaguesPage() {
       // Auto-select the joined league
       localStorage.setItem('currentLeagueId', leagueDoc.id);
       navigate('/palpites');
-    } catch (err) {
-      console.error("Error joining league:", err);
-      setError('Erro ao entrar na liga. Tente novamente.');
+    } catch (err: any) {
+      console.error("Error joining league details:", err);
+      setError(`Erro ao entrar na liga: ${err.message || 'Tente novamente.'}`);
     } finally {
       setSubmitting(false);
     }
