@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, currentLeagueId } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +31,7 @@ export function LoginPage() {
             photoURL: u.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}`,
             lastLogin: new Date().toISOString()
           }, { merge: true });
-          navigate('/palpites');
+          navigate(currentLeagueId ? '/palpites' : '/ligas');
         }
       } catch (err: any) {
         console.error("Redirect check error:", err);
@@ -49,8 +49,8 @@ export function LoginPage() {
   // Priority redirect if user is already detected
   useEffect(() => {
     if (user && !isProcessingRedirect) {
-      console.log("User detected, navigating to palpites");
-      navigate('/palpites');
+      console.log("User detected, navigating...");
+      navigate(currentLeagueId ? '/palpites' : '/ligas');
     }
   }, [user, isProcessingRedirect, navigate]);
 
@@ -63,7 +63,7 @@ export function LoginPage() {
     );
   }
 
-  if (user) return <Navigate to="/palpites" replace />;
+  if (user) return <Navigate to={currentLeagueId ? "/palpites" : "/ligas"} replace />;
 
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -81,7 +81,7 @@ export function LoginPage() {
           photoURL: u.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}`,
           lastLogin: new Date().toISOString()
         }, { merge: true });
-        navigate('/palpites');
+        navigate(currentLeagueId ? '/palpites' : '/ligas');
       }
     } catch (err: any) {
       console.error('Popup error, trying redirect...', err);
@@ -116,7 +116,7 @@ export function LoginPage() {
         const result = await signInWithEmailAndPassword(auth, email, password);
         u = result.user;
       }
-      navigate('/palpites');
+      navigate(currentLeagueId ? '/palpites' : '/ligas');
     } catch (err: any) {
       console.error("Auth error:", err);
       setError(err.code === 'auth/user-not-found' ? 'Usuário não encontrado.' : 

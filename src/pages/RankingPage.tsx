@@ -17,8 +17,7 @@ interface UserRanking {
 }
 
 export default function RankingPage() {
-  const { user: currentUser } = useAuth();
-  const currentLeagueId = localStorage.getItem('currentLeagueId');
+  const { user: currentUser, currentLeagueId } = useAuth();
   const [rankings, setRankings] = useState<UserRanking[]>([]);
   const [loading, setLoading] = useState(true);
   const [leagueName, setLeagueName] = useState('');

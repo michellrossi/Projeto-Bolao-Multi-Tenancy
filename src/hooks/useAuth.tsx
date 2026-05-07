@@ -8,15 +8,31 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isApproved: boolean;
+  currentLeagueId: string | null;
+  setLeagueId: (id: string | null) => void;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true, isAdmin: false, isApproved: false });
+const AuthContext = createContext<AuthContextType>({ 
+  user: null, 
+  loading: true, 
+  isAdmin: false, 
+  isApproved: false,
+  currentLeagueId: null,
+  setLeagueId: () => {}
+});
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentLeagueId, setCurrentLeagueId] = useState<string | null>(localStorage.getItem('currentLeagueId'));
+
+  const setLeagueId = (id: string | null) => {
+    if (id) localStorage.setItem('currentLeagueId', id);
+    else localStorage.removeItem('currentLeagueId');
+    setCurrentLeagueId(id);
+  };
 
   useEffect(() => {
     return onAuthStateChanged(auth, async (user) => {
@@ -36,7 +52,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const userDoc = await getDoc(userRef);
             
             if (!userDoc.exists()) {
-              // Auto-create missing user document
               await setDoc(userRef, {
                 uid: user.uid,
                 email: user.email,
@@ -53,6 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           setIsAdmin(false);
           setIsApproved(false);
+          setLeagueId(null);
         }
       } catch (error) {
         console.error("Auth initialization error:", error);
@@ -63,7 +79,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, isApproved }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, isApproved, currentLeagueId, setLeagueId }}>
       {children}
     </AuthContext.Provider>
   );

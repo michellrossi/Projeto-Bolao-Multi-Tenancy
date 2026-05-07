@@ -25,7 +25,7 @@ interface League {
 }
 
 export default function LeaguesPage() {
-  const { user } = useAuth();
+  const { user, setLeagueId } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -99,7 +99,7 @@ export default function LeaguesPage() {
       setLeagueName('');
       
       // Auto-select the newly created league
-      localStorage.setItem('currentLeagueId', docRef.id);
+      setLeagueId(docRef.id);
       navigate('/palpites');
     } catch (err) {
       console.error("Error creating league:", err);
@@ -144,7 +144,7 @@ export default function LeaguesPage() {
       setInviteCode('');
       
       // Auto-select the joined league
-      localStorage.setItem('currentLeagueId', leagueDoc.id);
+      setLeagueId(leagueDoc.id);
       navigate('/palpites');
     } catch (err: any) {
       console.error("Error joining league details:", err);
@@ -154,8 +154,18 @@ export default function LeaguesPage() {
     }
   };
 
+  const { user, setLeagueId } = useAuth();
+// ...
+      // Auto-select the newly created league
+      setLeagueId(docRef.id);
+      navigate('/palpites');
+// ...
+      // Auto-select the joined league
+      setLeagueId(leagueDoc.id);
+      navigate('/palpites');
+// ...
   const selectLeague = (leagueId: string) => {
-    localStorage.setItem('currentLeagueId', leagueId);
+    setLeagueId(leagueId);
     navigate('/palpites');
   };
 

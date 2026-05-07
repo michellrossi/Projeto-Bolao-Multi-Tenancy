@@ -4,7 +4,7 @@ import { useAuth } from './hooks/useAuth';
 import { BlockedUser } from './components/BlockedUser';
 
 export default function App() {
-  const { user, loading, isApproved } = useAuth();
+  const { user, loading, isApproved, currentLeagueId } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -24,8 +24,7 @@ export default function App() {
     return <BlockedUser />;
   }
 
-  const leagueId = localStorage.getItem('currentLeagueId');
-  const hasValidLeague = leagueId && leagueId !== 'null' && leagueId !== 'undefined';
+  const hasValidLeague = currentLeagueId && currentLeagueId !== 'null' && currentLeagueId !== 'undefined';
   
   // Regras 2 e 3: Se não tiver liga válida, força ficar na página de ligas
   if (!hasValidLeague && location.pathname !== '/ligas') {

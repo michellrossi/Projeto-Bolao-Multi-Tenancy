@@ -5,20 +5,19 @@ import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 
 export function NavBar() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, currentLeagueId } = useAuth();
   const [isOwner, setIsOwner] = useState(false);
-  const leagueId = localStorage.getItem('currentLeagueId');
-  const hasValidLeague = leagueId && leagueId !== 'null' && leagueId !== 'undefined';
+  const hasValidLeague = currentLeagueId && currentLeagueId !== 'null' && currentLeagueId !== 'undefined';
 
   useEffect(() => {
-    if (!user || !leagueId) {
+    if (!user || !currentLeagueId) {
       setIsOwner(false);
       return;
     }
 
     import('../lib/firebase').then(({ db }) => {
       import('firebase/firestore').then(({ doc, getDoc }) => {
-        getDoc(doc(db, 'leagues', leagueId)).then(snap => {
+        getDoc(doc(db, 'leagues', currentLeagueId)).then(snap => {
           if (snap.exists() && snap.data().ownerId === user.uid) {
             setIsOwner(true);
           } else {
@@ -27,7 +26,7 @@ export function NavBar() {
         });
       });
     });
-  }, [user, leagueId]);
+  }, [user, currentLeagueId]);
 
   const links = hasValidLeague ? [
     { name: 'Palpites', icon: CalendarDays, path: '/palpites' },
