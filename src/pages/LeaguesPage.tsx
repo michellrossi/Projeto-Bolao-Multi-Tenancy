@@ -78,6 +78,11 @@ export default function LeaguesPage() {
 
       const docRef = await addDoc(collection(db, 'leagues'), leagueData);
       
+      // Marcar o usuário como dono no documento de perfil dele (para regras de segurança)
+      await updateDoc(doc(db, 'users', user.uid), {
+        isOwner: true
+      });
+      
       setLeagues([...leagues, { id: docRef.id, ...leagueData }]);
       setShowCreateModal(false);
       setLeagueName('');
