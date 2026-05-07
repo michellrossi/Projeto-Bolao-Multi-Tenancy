@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, LogOut, Clock, User as UserIcon, X, CheckCircle2, ChevronDown, ScrollText, Users } from 'lucide-react';
+import { Bell, LogOut, Clock, User as UserIcon, X, CheckCircle2, ChevronDown, ScrollText, Users, Trophy } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
@@ -25,12 +25,29 @@ const AVATARS = [
 
 export function Header() {
   const navigate = useNavigate();
-  const { user, isApproved, isAdmin } = useAuth();
+  const { user, isApproved, isAdmin, currentLeagueId } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [currentLeagueName, setCurrentLeagueName] = useState<string>('');
+
+  useEffect(() => {
+    if (!user) return;
+    
+    // Buscar nome da liga atual
+    if (currentLeagueId) {
+      const unsubLeague = onSnapshot(doc(db, 'leagues', currentLeagueId), (doc) => {
+        if (doc.exists()) {
+          setCurrentLeagueName(doc.data().name);
+        }
+      });
+      return () => unsubLeague();
+    } else {
+      setCurrentLeagueName('');
+    }
+  }, [currentLeagueId]);
 
   useEffect(() => {
     if (!user) return;
@@ -84,8 +101,24 @@ export function Header() {
   return (
     <>
       <header className="bg-dark/80 backdrop-blur-xl flex justify-between items-center w-full px-6 h-20 fixed top-0 z-50 border-b border-white/5 shadow-2xl">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <img src="https://iili.io/BZG2miP.png" alt="Bolão 2026" className="h-12 w-auto object-contain" />
+          
+          <AnimatePresence>
+            {currentLeagueName && (
+              <motion.div 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="hidden md:flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-2xl"
+              >
+                <Trophy size={14} className="text-primary" />
+                <span className="text-[11px] font-black uppercase tracking-widest text-white truncate max-w-[200px]">
+                  {currentLeagueName}
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         
         <div className="flex items-center gap-3 relative">
