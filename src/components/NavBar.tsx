@@ -18,7 +18,7 @@ export function NavBar() {
 
     import('../lib/firebase').then(({ db }) => {
       import('firebase/firestore').then(({ doc, getDoc }) => {
-        getDoc(doc(db, 'leagues', currentLeagueId)).then(snap => {
+        getDoc(doc(db, 'leagues', leagueId)).then(snap => {
           if (snap.exists() && snap.data().ownerId === user.uid) {
             setIsOwner(true);
           } else {
@@ -27,7 +27,7 @@ export function NavBar() {
         });
       });
     });
-  }, [user, currentLeagueId]);
+  }, [user, leagueId]);
 
   const links = hasValidLeague ? [
     { name: 'Palpites', icon: CalendarDays, path: '/palpites' },
