@@ -123,6 +123,15 @@ create policy "Users can view own profile" on users for select using (auth.uid()
 drop policy if exists "Users can update own profile" on users;
 create policy "Users can update own profile" on users for update using (auth.uid() = id);
 
+drop policy if exists "Co-members can see public profiles" on users;
+create policy "Co-members can see public profiles" on users for select using (
+  exists (
+    select 1 from league_members lm1 
+    join league_members lm2 on lm1.league_id = lm2.league_id 
+    where lm1.user_id = auth.uid() and lm2.user_id = users.id
+  )
+);
+
 -- Políticas de Ligas
 drop policy if exists "Members can see their leagues" on leagues;
 create policy "Members can see their leagues" on leagues for select using (

@@ -26,7 +26,7 @@ export default function LandingPage() {
       name: "Ouro",
       price: "147",
       participants: 100,
-      features: ["Até 100 participantes", "Bolões ilimitados", "Sua logo no header", "Sem marca d'água", "Gestão de premiação", "Acesso vitalício"],
+      features: ["Até 100 participantes", "Bolões ilimitados", "Sem marca d'água", "Acesso vitalício"],
       popular: false,
       color: "from-yellow-500/20 to-yellow-500/5"
     }

@@ -58,6 +58,10 @@ const router = createBrowserRouter([
       { path: '/app/admin-resultados', element: <AdminResultsPage /> },
     ],
   },
+  {
+    path: '*',
+    element: <Navigate to="/" replace />
+  }
 ]);
 
 createRoot(document.getElementById('root')!).render(
