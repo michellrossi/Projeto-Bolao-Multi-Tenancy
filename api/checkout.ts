@@ -5,7 +5,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { name, email, plan, creditCard, cpfCnpj, postalCode, userId } = req.body;
+  const { name, email, plan, creditCard, cpfCnpj, postalCode, addressNumber, phone, userId } = req.body;
   const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
   const ASAAS_API_URL = process.env.ASAAS_API_URL;
 
@@ -62,8 +62,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         email: email,
         cpfCnpj: cpfCnpj.replace(/\D/g, ''),
         postalCode: postalCode.replace(/\D/g, ''),
-        addressNumber: '1',
-        phone: '11999999999'
+        addressNumber: addressNumber || '1',
+        phone: phone ? phone.replace(/\D/g, '') : undefined,
       },
       remoteIp: req.headers['x-forwarded-for'] || req.socket.remoteAddress
     };

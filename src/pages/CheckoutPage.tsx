@@ -19,6 +19,8 @@ export default function CheckoutPage() {
     password: '',
     cpf: '',
     postalCode: '',
+    addressNumber: '',
+    phone: '',
     cardNumber: '',
     expiry: '',
     cvc: ''
@@ -33,40 +35,45 @@ export default function CheckoutPage() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: {
-          data: {
-            full_name: formData.name,
-          }
-        }
+        options: { data: { full_name: formData.name } }
       });
 
       if (authError) throw authError;
       const user = authData.user;
-      if (!user) throw new Error("Erro ao criar usuário.");
+      if (!user) throw new Error('Erro ao criar usuário.');
 
-      // 2. Processar Pagamento via Asaas enviando o ID do usuário
-      const paymentResponse = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          cpfCnpj: formData.cpf,
-          postalCode: formData.postalCode,
-          plan: plan,
-          userId: user.id,
-          creditCard: {
-            number: formData.cardNumber,
-            expiry: formData.expiry,
-            cvc: formData.cvc
-          }
-        }),
-      });
-
-      const paymentResult = await paymentResponse.json();
-
-      if (!paymentResponse.ok) {
-        throw new Error(paymentResult.error || 'Erro ao processar pagamento.');
+      // 2. Processar Pagamento via Asaas
+      let paymentResult: { paymentId?: string; error?: string };
+      try {
+        const paymentResponse = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            cpfCnpj: formData.cpf,
+            postalCode: formData.postalCode,
+            addressNumber: formData.addressNumber,
+            phone: formData.phone,
+            plan,
+            userId: user.id,
+            creditCard: {
+              number: formData.cardNumber,
+              expiry: formData.expiry,
+              cvc: formData.cvc
+            }
+          }),
+        });
+        paymentResult = await paymentResponse.json();
+        if (!paymentResponse.ok) {
+          throw new Error(paymentResult.error || 'Pagamento não autorizado.');
+        }
+      } catch (paymentError: unknown) {
+        // FIX #3: Rollback — marca o usuário como não aprovado para ele poder tentar de novo
+        // (O Webhook do Asaas irá liberar quando o pagamento de fato confirmar)
+        await supabase.from('users').update({ has_license: false, approved: false }).eq('id', user.id);
+        const msg = paymentError instanceof Error ? paymentError.message : 'Erro no pagamento.';
+        throw new Error(msg);
       }
 
       // 3. Generate Code
@@ -267,6 +274,24 @@ export default function CheckoutPage() {
                     required
                     value={formData.postalCode}
                     onChange={e => setFormData({...formData, postalCode: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <input 
+                    type="text" 
+                    placeholder="Número (endereço)" 
+                    required
+                    value={formData.addressNumber}
+                    onChange={e => setFormData({...formData, addressNumber: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all"
+                  />
+                  <input 
+                    type="tel" 
+                    placeholder="Telefone (com DDD)" 
+                    required
+                    value={formData.phone}
+                    onChange={e => setFormData({...formData, phone: e.target.value})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all"
                   />
                 </div>

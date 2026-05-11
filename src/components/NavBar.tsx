@@ -3,11 +3,13 @@ import { Trophy, CalendarDays, LayoutGrid, BarChart3, Users, ClipboardList } fro
 import { NavLink } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
+import { useLeague } from '../hooks/useLeague';
 
 import { supabase } from '../lib/supabase';
 
 export function NavBar() {
-  const { user, isAdmin, currentLeagueId } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const { currentLeagueId } = useLeague(); // FIX #6: fonte única
   const [isOwner, setIsOwner] = useState(false);
   const hasValidLeague = !!currentLeagueId && currentLeagueId !== 'null' && currentLeagueId !== 'undefined';
 

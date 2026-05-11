@@ -145,7 +145,29 @@ create policy "Users can join leagues" on league_members for insert with check (
 drop policy if exists "Public results" on results;
 create policy "Public results" on results for select using (true);
 
--- 7. Trigger de Proteção de Capacidade
+-- FIX #2: Políticas completas para predictions (faltavam — bloqueava tudo com RLS ativo)
+drop policy if exists "Members can read predictions in their league" on predictions;
+create policy "Members can read predictions in their league" on predictions
+  for select using (
+    exists (
+      select 1 from league_members
+      where league_id = predictions.league_id and user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Users can insert own predictions" on predictions;
+create policy "Users can insert own predictions" on predictions
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update own predictions" on predictions;
+create policy "Users can update own predictions" on predictions
+  for update using (auth.uid() = user_id);
+
+drop policy if exists "Users can delete own predictions" on predictions;
+create policy "Users can delete own predictions" on predictions
+  for delete using (auth.uid() = user_id);
+
+-- 7. Trigger de Proteção de Capacidade de Participantes
 create or replace function check_league_capacity()
 returns trigger language plpgsql as $$
 declare
@@ -166,7 +188,29 @@ create trigger enforce_league_capacity
 before insert on league_members
 for each row execute function check_league_capacity();
 
+-- FIX #4: Trigger que limita o número de ligas criadas por usuário (max_leagues_allowed)
+create or replace function check_league_limit()
+returns trigger language plpgsql as $$
+declare
+  owned_count integer;
+  max_leagues integer;
+begin
+  select count(*) into owned_count from leagues where owner_id = NEW.owner_id;
+  select max_leagues_allowed into max_leagues from public.users where id = NEW.owner_id;
+  if max_leagues is not null and owned_count >= max_leagues then
+    raise exception 'LEAGUE_LIMIT: Você atingiu o limite de % liga(s) do seu plano.', max_leagues using errcode = 'P0002';
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists enforce_league_limit on leagues;
+create trigger enforce_league_limit
+before insert on leagues
+for each row execute function check_league_limit();
+
 -- 8. Índices de Performance
 create index if not exists idx_league_members_league_id on league_members(league_id);
 create index if not exists idx_predictions_league_user on predictions(league_id, user_id);
 create index if not exists idx_leagues_invite_code on leagues(invite_code);
+create index if not exists idx_leagues_owner_id on leagues(owner_id);

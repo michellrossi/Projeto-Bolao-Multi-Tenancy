@@ -10,8 +10,6 @@ interface AuthContextType {
   hasLicense: boolean;
   maxLeaguesAllowed: number;
   maxParticipantsAllowed: number;
-  currentLeagueId: string | null;
-  setLeagueId: (id: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,10 +18,8 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   isApproved: false,
   hasLicense: false,
-  maxLeaguesAllowed: 1, // Bronze default
-  maxParticipantsAllowed: 15, // Bronze default
-  currentLeagueId: null,
-  setLeagueId: () => { }
+  maxLeaguesAllowed: 1,
+  maxParticipantsAllowed: 15,
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -34,21 +30,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [maxLeaguesAllowed, setMaxLeaguesAllowed] = useState(1);
   const [maxParticipantsAllowed, setMaxParticipantsAllowed] = useState(15);
   const [loading, setLoading] = useState(true);
-  const [currentLeagueId, setCurrentLeagueId] = useState<string | null>(localStorage.getItem('currentLeagueId'));
-
-  const setLeagueId = (id: string | null) => {
-    if (id) localStorage.setItem('currentLeagueId', id);
-    else localStorage.removeItem('currentLeagueId');
-    setCurrentLeagueId(id);
-  };
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleUserChange(session?.user ?? null);
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       handleUserChange(session?.user ?? null);
     });
@@ -60,28 +47,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setUser(user);
       if (user) {
-        // Check Admin
+        // FIX #1: Admin verificado APENAS pela tabela admins — sem e-mail hardcoded
         const { data: adminDoc } = await supabase
           .from('admins')
           .select('email')
           .eq('email', user.email)
           .single();
 
-        const isAdminUser = !!adminDoc || user.email === 'mionmic@gmail.com';
+        const isAdminUser = !!adminDoc;
         setIsAdmin(isAdminUser);
 
-        // Check Approval (Admins are always approved)
         if (isAdminUser) {
           setIsApproved(true);
+          setHasLicense(true);
         } else {
           const { data: userData, error } = await supabase
             .from('users')
             .select('approved, has_license, max_leagues_allowed, max_participants_allowed')
             .eq('id', user.id)
             .single();
-          
-          if (error && error.code === 'PGRST116') { // PGRST116 means not found
-            // Auto-create missing user document in Supabase
+
+          if (error && error.code === 'PGRST116') {
+            // Usuário existe no Auth mas não na tabela users (trigger falhou) — auto-cria
             const { data: newUser } = await supabase
               .from('users')
               .insert({
@@ -93,7 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               })
               .select()
               .single();
-            
+
             setIsApproved(newUser?.approved === true);
             setHasLicense(newUser?.has_license === true);
             setMaxLeaguesAllowed(newUser?.max_leagues_allowed || 1);
@@ -108,25 +95,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setIsAdmin(false);
         setIsApproved(false);
+        setHasLicense(false);
       }
     } catch (error) {
-      console.error("Auth initialization error:", error);
+      console.error('Auth initialization error:', error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      isAdmin, 
-      isApproved, 
-      hasLicense, 
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      isAdmin,
+      isApproved,
+      hasLicense,
       maxLeaguesAllowed,
-      maxParticipantsAllowed, 
-      currentLeagueId, 
-      setLeagueId 
+      maxParticipantsAllowed,
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,9 +1,12 @@
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { useAuth } from './hooks/useAuth';
+import { useLeague } from './hooks/useLeague';
 
 export default function App() {
   const { user, loading } = useAuth();
+  // FIX #6: Fonte de verdade única para o ID da liga — useLeague (não mais localStorage direto)
+  const { currentLeagueId } = useLeague();
   const location = useLocation();
 
   if (loading) {
@@ -18,10 +21,8 @@ export default function App() {
     return <Navigate to="/login" replace />;
   }
 
-  const currentLeagueId = localStorage.getItem('currentLeagueId');
-
-  if (!currentLeagueId && location.pathname !== '/ligas') {
-    return <Navigate to="/ligas" replace />;
+  if (!currentLeagueId && location.pathname !== '/app/ligas') {
+    return <Navigate to="/app/ligas" replace />;
   }
 
   return (
