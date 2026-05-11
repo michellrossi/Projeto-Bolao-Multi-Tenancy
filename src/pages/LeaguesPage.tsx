@@ -82,7 +82,21 @@ export default function LeaguesPage() {
     setError('');
 
     try {
-      const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      // Gera código único verificando colisão no banco
+      let generatedCode = '';
+      let isUnique = false;
+      while (!isUnique) {
+        const candidate = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const { data: existing } = await supabase
+          .from('leagues')
+          .select('id')
+          .eq('invite_code', candidate)
+          .maybeSingle();
+        if (!existing) {
+          generatedCode = candidate;
+          isUnique = true;
+        }
+      }
 
       // 1. Create league
       const { data: newLeague, error: createError } = await supabase

@@ -16,6 +16,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [accessCode, setAccessCode] = useState('');
   const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
+  const [forgotSent, setForgotSent] = useState(false);
 
   // Priority redirect if user is already detected
   useEffect(() => {
@@ -93,6 +94,24 @@ export function LoginPage() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Digite seu e-mail acima antes de redefinir a senha.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    setLoading(false);
+    if (error) {
+      setError('Não foi possível enviar o e-mail. Verifique o endereço.');
+    } else {
+      setForgotSent(true);
+    }
+  };
+
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden font-sans bg-dark">
       <div className="absolute inset-0 z-0 scale-105" style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80")', backgroundSize: 'cover', backgroundPosition: 'center', filter: 'brightness(0.2) saturate(0.5)' }} />
@@ -131,6 +150,23 @@ export function LoginPage() {
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
               <input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-primary transition-all text-white" />
             </div>
+            {!isRegistering && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={loading}
+                  className="text-[10px] font-black text-white/30 hover:text-primary transition-colors uppercase tracking-widest"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
+            {forgotSent && (
+              <p className="text-primary text-xs font-bold text-center animate-in fade-in">
+                ✓ E-mail de redefinição enviado! Verifique sua caixa.
+              </p>
+            )}
             <div className="pt-4 border-t border-white/5">
               <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-3 ml-2">Possui um código de ativação?</p>
               <div className="relative">

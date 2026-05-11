@@ -123,7 +123,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isAdmin, 
       isApproved, 
       hasLicense, 
-      maxLeaguesAllowed, 
+      maxLeaguesAllowed,
       maxParticipantsAllowed, 
       currentLeagueId, 
       setLeagueId 
