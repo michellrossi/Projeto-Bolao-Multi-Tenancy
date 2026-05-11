@@ -11,6 +11,7 @@ import UsersPage from './pages/UsersPage';
 import RulesPage from './pages/RulesPage';
 import LeaguesPage from './pages/LeaguesPage';
 import { AuthProvider } from './hooks/useAuth';
+import { LeagueProvider } from './hooks/useLeague';
 import './index.css';
 
 const router = createBrowserRouter([
@@ -37,7 +38,9 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
-      <RouterProvider router={router} />
+      <LeagueProvider>
+        <RouterProvider router={router} />
+      </LeagueProvider>
     </AuthProvider>
   </StrictMode>,
 );

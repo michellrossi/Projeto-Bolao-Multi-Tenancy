@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../lib/firebase';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { UserCheck, UserX, ShieldCheck, Mail, Calendar, Search } from 'lucide-react';
 
 interface UserData {
-  uid: string;
+  id: string;
   email: string;
-  displayName: string;
-  photoURL: string;
+  display_name: string;
+  photo_url: string;
   approved?: boolean;
-  lastLogin: string;
+  last_login: string;
 }
 
 export default function UsersPage() {
@@ -23,29 +22,33 @@ export default function UsersPage() {
   useEffect(() => {
     if (!isAdmin) return;
 
-    const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const data: UserData[] = [];
-      snapshot.forEach((doc) => {
-        const userData = doc.data() as UserData;
-        data.push(userData);
-      });
-      // Sort handling missing lastLogin
-      data.sort((a, b) => (b.lastLogin || '').localeCompare(a.lastLogin || ''));
-      setUsers(data);
+    const fetchUsers = async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('last_login', { ascending: false });
+      
+      if (data) setUsers(data as UserData[]);
+      if (error) console.error("Erro ao buscar usuários:", error);
       setLoading(false);
-    }, (error) => {
-      console.error("Erro ao buscar usuários:", error);
-      setLoading(false);
-    });
+    };
 
-    return unsub;
+    fetchUsers();
+
+    const sub = supabase.channel('users_changes').on('postgres_changes', { event: '*', table: 'users' }, fetchUsers).subscribe();
+
+    return () => {
+      sub.unsubscribe();
+    };
   }, [isAdmin]);
 
-  const handleToggleApproval = async (uid: string, currentStatus: boolean) => {
+  const handleToggleApproval = async (id: string, currentStatus: boolean) => {
     try {
-      await updateDoc(doc(db, 'users', uid), {
-        approved: !currentStatus
-      });
+      const { error } = await supabase
+        .from('users')
+        .update({ approved: !currentStatus })
+        .eq('id', id);
+      if (error) throw error;
     } catch (error) {
       console.error("Error updating approval:", error);
     }
@@ -86,7 +89,7 @@ export default function UsersPage() {
           {filteredUsers.map((user) => (
             <motion.div
               layout
-              key={user.uid}
+              key={user.id}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
@@ -94,7 +97,7 @@ export default function UsersPage() {
             >
               <div className="flex items-center gap-4 flex-1 overflow-hidden">
                 <div className="relative">
-                  <img src={user.photoURL} alt="" className="w-14 h-14 rounded-2xl object-cover border-2 border-white/10" />
+                  <img src={user.photo_url} alt="" className="w-14 h-14 rounded-2xl object-cover border-2 border-white/10" />
                   {user.approved && (
                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full border-2 border-dark flex items-center justify-center text-dark">
                       <ShieldCheck size={12} />
@@ -102,7 +105,7 @@ export default function UsersPage() {
                   )}
                 </div>
                 <div className="overflow-hidden">
-                  <p className="font-bold text-white truncate">{user.displayName}</p>
+                  <p className="font-bold text-white truncate">{user.display_name}</p>
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-1.5 text-[10px] text-white/40">
                       <Mail size={10} />
@@ -110,14 +113,14 @@ export default function UsersPage() {
                     </div>
                     <div className="flex items-center gap-1.5 text-[10px] text-white/40">
                       <Calendar size={10} />
-                      <span>Log: {new Date(user.lastLogin).toLocaleDateString('pt-BR')}</span>
+                      <span>Log: {new Date(user.last_login).toLocaleDateString('pt-BR')}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               <button
-                onClick={() => handleToggleApproval(user.uid, user.approved || false)}
+                onClick={() => handleToggleApproval(user.id, user.approved || false)}
                 className={`
                   flex flex-col items-center justify-center gap-1 w-24 h-24 rounded-2xl transition-all font-black text-[9px] uppercase tracking-widest border
                   ${user.approved 

@@ -5,20 +5,19 @@ import { KNOCKOUT_MATCHES } from '../lib/knockout';
 import { Calendar, Users, Trophy, Lock, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { getFlagUrl } from '../lib/flags';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
-import { doc, setDoc, onSnapshot, collection } from 'firebase/firestore';
+import { useLeague } from '../hooks/useLeague';
+import { supabase } from '../lib/supabase';
 import { isMatchLocked, calculatePoints, getGroupStandings, getKnockoutTeam } from '../lib/scoring';
 
 const TABS = [...WORLD_CUP_2026_ROUNDS.map(r => r.name), "Mata-Mata"];
 
 export default function PredictionsPage() {
   const { user, isApproved } = useAuth();
-  const currentLeagueId = localStorage.getItem('currentLeagueId');
+  const { currentLeagueId } = useLeague();
   const [activeTab, setActiveTab] = useState("1ª Rodada");
   const [predictions, setPredictions] = useState<Record<string, { home: number; away: number }>>({});
   const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
   const [loading, setLoading] = useState(true);
-
   const activeRound = WORLD_CUP_2026_ROUNDS.find(r => r.name === activeTab);
   const standings = getGroupStandings(
     Object.entries(results).reduce((acc: any, [id, res]) => {
@@ -30,30 +29,79 @@ export default function PredictionsPage() {
   useEffect(() => {
     if (!user || !currentLeagueId) return;
 
-    const unsubResults = onSnapshot(collection(db, 'results'), (snapshot) => {
-      const data: any = {};
-      snapshot.forEach((doc) => data[doc.id] = doc.data());
-      setResults(data);
-    });
+    // Fetch results
+    const fetchResults = async () => {
+      const { data } = await supabase.from('results').select('*');
+      if (data) {
+        const resMap: any = {};
+        data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score });
+        setResults(resMap);
+      }
+    };
 
-    const unsubPreds = onSnapshot(doc(db, 'leagues', currentLeagueId, 'predictions', user.uid), (doc) => {
-      if (doc.exists()) {
-        setPredictions(doc.data().matches || {});
+    // Fetch predictions
+    const fetchPredictions = async () => {
+      const { data } = await supabase
+        .from('predictions')
+        .select('*')
+        .eq('league_id', currentLeagueId)
+        .eq('user_id', user.id);
+      
+      if (data) {
+        const predMap: any = {};
+        data.forEach(p => predMap[p.match_id] = { home: p.home_score, away: p.away_score });
+        setPredictions(predMap);
       }
       setLoading(false);
-    });
+    };
+
+    fetchResults();
+    fetchPredictions();
+
+    // Subscribe to results changes
+    const resultsSub = supabase
+      .channel('results_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'results' }, () => {
+        fetchResults();
+      })
+      .subscribe();
+
+    // Subscribe to predictions changes for this user
+    const predsSub = supabase
+      .channel('predictions_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'predictions',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        fetchPredictions();
+      })
+      .subscribe();
 
     return () => {
-      unsubResults();
-      unsubPreds();
+      resultsSub.unsubscribe();
+      predsSub.unsubscribe();
     };
-  }, [user]);
+  }, [user, currentLeagueId]);
 
   const handleSavePrediction = async (matchId: string, home: number, away: number) => {
     if (!user || !isApproved || !currentLeagueId) return;
     try {
-      const newPredictions = { ...predictions, [matchId]: { home, away } };
-      await setDoc(doc(db, 'leagues', currentLeagueId, 'predictions', user.uid), { matches: newPredictions }, { merge: true });
+      const { error } = await supabase
+        .from('predictions')
+        .upsert({
+          league_id: currentLeagueId,
+          user_id: user.id,
+          match_id: matchId,
+          home_score: home,
+          away_score: away,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'league_id,user_id,match_id' });
+
+      if (error) throw error;
+      
+      setPredictions(prev => ({ ...prev, [matchId]: { home, away } }));
     } catch (error) {
       console.error("Error saving prediction:", error);
     }

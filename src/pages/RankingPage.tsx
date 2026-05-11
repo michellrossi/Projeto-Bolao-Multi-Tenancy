@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { db } from '../lib/firebase';
-import { collection, onSnapshot, getDocs, getDoc, doc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useLeague } from '../hooks/useLeague';
 import { calculatePoints } from '../lib/scoring';
 import { Trophy, TrendingUp, TrendingDown, Minus, Crown } from 'lucide-react';
 
@@ -17,7 +17,7 @@ interface UserRanking {
 
 export default function RankingPage() {
   const { user: currentUser } = useAuth();
-  const currentLeagueId = localStorage.getItem('currentLeagueId');
+  const { currentLeagueId } = useLeague();
   const [rankings, setRankings] = useState<UserRanking[]>([]);
   const [loading, setLoading] = useState(true);
   const [leagueName, setLeagueName] = useState('');
@@ -25,42 +25,48 @@ export default function RankingPage() {
   useEffect(() => {
     if (!currentLeagueId) return;
 
-    // 1. Fetch all results
-    const unsubResults = onSnapshot(collection(db, 'results'), async (resultsSnapshot) => {
-      const results: any = {};
-      resultsSnapshot.forEach(doc => results[doc.id] = doc.data());
-
-      // 2. Fetch League and Data
+    const fetchData = async () => {
       try {
-        const leagueDoc = await getDoc(doc(db, 'leagues', currentLeagueId));
-        if (!leagueDoc.exists()) return;
-        
-        const leagueData = leagueDoc.data();
-        setLeagueName(leagueData.name);
-        const members: string[] = leagueData.members || [];
+        // 1. Fetch Results
+        const { data: resultsData } = await supabase.from('results').select('*');
+        const resultsMap: any = {};
+        resultsData?.forEach(r => resultsMap[r.match_id] = { home: r.home_score, away: r.away_score });
 
-        const [predsSnapshot, usersSnapshot] = await Promise.all([
-          getDocs(collection(db, 'leagues', currentLeagueId, 'predictions')),
-          getDocs(collection(db, 'users'))
-        ]);
-        
+        // 2. Fetch League Name
+        const { data: leagueData } = await supabase
+          .from('leagues')
+          .select('name')
+          .eq('id', currentLeagueId)
+          .single();
+        if (leagueData) setLeagueName(leagueData.name);
+
+        // 3. Fetch Members and their Profiles
+        const { data: membersData } = await supabase
+          .from('league_members')
+          .select('user_id, users(id, email, display_name, photo_url)')
+          .eq('league_id', currentLeagueId);
+
+        // 4. Fetch All Predictions for this League
+        const { data: predsData } = await supabase
+          .from('predictions')
+          .select('*')
+          .eq('league_id', currentLeagueId);
+
         const allPredictions: any = {};
-        predsSnapshot.forEach(doc => allPredictions[doc.id] = doc.data().matches || {});
+        predsData?.forEach(p => {
+          if (!allPredictions[p.user_id]) allPredictions[p.user_id] = {};
+          allPredictions[p.user_id][p.match_id] = { home: p.home_score, away: p.away_score };
+        });
 
-        const rankingList: UserRanking[] = [];
-
-        usersSnapshot.forEach((userDoc) => {
-          const userData = userDoc.data();
-          const userId = userDoc.id;
-          
-          // Only show members of this league
-          if (!members.includes(userId)) return;
-
+        // 5. Calculate Rankings
+        const rankingList: UserRanking[] = (membersData || []).map((member: any) => {
+          const profile = member.users;
+          const userId = profile.id;
           const userPreds = allPredictions[userId] || {};
 
           let totalPoints = 0;
           Object.entries(userPreds).forEach(([matchId, pred]: any) => {
-            const result = results[matchId];
+            const result = resultsMap[matchId];
             if (result) {
               totalPoints += calculatePoints(
                 { homeScore: Number(pred.home), awayScore: Number(pred.away) },
@@ -69,14 +75,14 @@ export default function RankingPage() {
             }
           });
 
-          rankingList.push({
+          return {
             id: userId,
-            name: userData.displayName || 'Competidor',
-            photo: userData.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
+            name: profile.display_name || 'Competidor',
+            photo: profile.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
             points: totalPoints,
             trend: 'stable',
             trendValue: 0
-          });
+          };
         });
 
         // Sort by points (DESC) then by name (ASC) as tie-breaker
@@ -86,15 +92,23 @@ export default function RankingPage() {
         });
 
         setRankings(rankingList);
-        setLoading(false);
       } catch (error) {
         console.error("Error fetching rankings:", error);
-        setRankings([]);
+      } finally {
         setLoading(false);
       }
-    });
+    };
 
-    return () => unsubResults();
+    fetchData();
+
+    // Setup real-time listeners
+    const resultsSub = supabase.channel('ranking_results').on('postgres_changes', { event: '*', table: 'results' }, fetchData).subscribe();
+    const predsSub = supabase.channel('ranking_preds').on('postgres_changes', { event: '*', table: 'predictions', filter: `league_id=eq.${currentLeagueId}` }, fetchData).subscribe();
+
+    return () => {
+      resultsSub.unsubscribe();
+      predsSub.unsubscribe();
+    };
   }, [currentUser, currentLeagueId]);
 
   if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
@@ -182,7 +196,7 @@ export default function RankingPage() {
         <div className="space-y-3 px-2">
           {rankings.length > 0 ? (
             rankings.map((player, index) => {
-              const isCurrentUser = player.id === currentUser?.uid;
+              const isCurrentUser = player.id === currentUser?.id;
               return (
                 <motion.div
                   key={player.id}

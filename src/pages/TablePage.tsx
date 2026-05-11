@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
-import { doc, setDoc, onSnapshot, collection, deleteDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { getFlagUrl } from '../lib/flags';
 import { Save, Lock, Edit3, Trash2 } from 'lucide-react';
 
@@ -13,21 +12,35 @@ export default function TablePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'results'), (snapshot) => {
-      const data: any = {};
-      snapshot.forEach((doc) => {
-        data[doc.id] = doc.data();
-      });
-      setResults(data);
+    const fetchResults = async () => {
+      const { data } = await supabase.from('results').select('*');
+      if (data) {
+        const resMap: any = {};
+        data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score });
+        setResults(resMap);
+      }
       setLoading(false);
-    });
-    return unsub;
+    };
+
+    fetchResults();
+
+    const sub = supabase.channel('table_results').on('postgres_changes', { event: '*', table: 'results' }, fetchResults).subscribe();
+
+    return () => {
+      sub.unsubscribe();
+    };
   }, []);
 
   const handleSaveResult = async (matchId: string, home: any, away: any) => {
     if (home === '' || away === '') return;
     try {
-      await setDoc(doc(db, 'results', matchId), { home: Number(home), away: Number(away) });
+      const { error } = await supabase.from('results').upsert({
+        match_id: matchId,
+        home_score: Number(home),
+        away_score: Number(away),
+        updated_at: new Date().toISOString()
+      });
+      if (error) throw error;
     } catch (error) {
       console.error("Error saving result:", error);
     }
@@ -36,7 +49,8 @@ export default function TablePage() {
   const handleResetResult = async (matchId: string) => {
     if (!confirm("Tem certeza que deseja resetar o resultado deste jogo?")) return;
     try {
-      await deleteDoc(doc(db, 'results', matchId));
+      const { error } = await supabase.from('results').delete().eq('match_id', matchId);
+      if (error) throw error;
     } catch (error) {
       console.error("Error resetting result:", error);
     }

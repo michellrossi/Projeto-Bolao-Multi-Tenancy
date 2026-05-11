@@ -1,31 +1,23 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../lib/firebase';
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  doc, 
-  arrayUnion,
-  getDoc
-} from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useLeague } from '../hooks/useLeague';
 import { Plus, Users, LogIn, Shield, Trophy, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface League {
   id: string;
   name: string;
-  ownerId: string;
-  inviteCode: string;
-  members: string[];
+  owner_id: string;
+  invite_code: string;
+  members_count: number;
+  is_owner: boolean;
 }
 
 export default function LeaguesPage() {
   const { user } = useAuth();
+  const { setLeague } = useLeague();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -43,13 +35,38 @@ export default function LeaguesPage() {
 
   const fetchLeagues = async () => {
     try {
-      const q = query(collection(db, 'leagues'), where('members', 'array-contains', user?.uid));
-      const querySnapshot = await getDocs(q);
-      const leagueList: League[] = [];
-      querySnapshot.forEach((doc) => {
-        leagueList.push({ id: doc.id, ...doc.data() } as League);
-      });
-      setLeagues(leagueList);
+      // Fetch leagues where the user is a member
+      const { data, error } = await supabase
+        .from('leagues')
+        .select(`
+          id, 
+          name, 
+          owner_id, 
+          invite_code,
+          league_members!inner(user_id)
+        `)
+        .eq('league_members.user_id', user?.id);
+
+      if (error) throw error;
+
+      // For each league, get the total member count
+      const leaguesWithCount = await Promise.all((data || []).map(async (l: any) => {
+        const { count } = await supabase
+          .from('league_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('league_id', l.id);
+        
+        return {
+          id: l.id,
+          name: l.name,
+          owner_id: l.owner_id,
+          invite_code: l.invite_code,
+          members_count: count || 0,
+          is_owner: l.owner_id === user?.id
+        };
+      }));
+
+      setLeagues(leaguesWithCount);
     } catch (err) {
       console.error("Error fetching leagues:", err);
     } finally {
@@ -65,25 +82,43 @@ export default function LeaguesPage() {
     setError('');
 
     try {
-      // Generate a unique invite code
       const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       
-      const leagueData = {
-        name: leagueName,
-        ownerId: user.uid,
-        inviteCode: generatedCode,
-        members: [user.uid],
-        createdAt: new Date().toISOString(),
-      };
+      // 1. Create the league
+      const { data: newLeague, error: leagueError } = await supabase
+        .from('leagues')
+        .insert({
+          name: leagueName,
+          owner_id: user.id,
+          invite_code: generatedCode,
+        })
+        .select()
+        .single();
 
-      const docRef = await addDoc(collection(db, 'leagues'), leagueData);
+      if (leagueError) throw leagueError;
+
+      // 2. Add owner as first member
+      const { error: memberError } = await supabase
+        .from('league_members')
+        .insert({
+          league_id: newLeague.id,
+          user_id: user.id
+        });
+
+      if (memberError) throw memberError;
       
-      setLeagues([...leagues, { id: docRef.id, ...leagueData }]);
+      setLeagues([...leagues, { 
+        id: newLeague.id, 
+        name: newLeague.name,
+        owner_id: newLeague.owner_id,
+        invite_code: newLeague.invite_code,
+        members_count: 1,
+        is_owner: true
+      }]);
       setShowCreateModal(false);
       setLeagueName('');
       
-      // Auto-select the newly created league
-      localStorage.setItem('currentLeagueId', docRef.id);
+      setLeague(newLeague.id);
       navigate('/palpites');
     } catch (err) {
       console.error("Error creating league:", err);
@@ -101,34 +136,58 @@ export default function LeaguesPage() {
     setError('');
 
     try {
-      const q = query(collection(db, 'leagues'), where('inviteCode', '==', inviteCode.trim().toUpperCase()));
-      const querySnapshot = await getDocs(q);
+      // 1. Find the league by invite code
+      const { data: league, error: findError } = await supabase
+        .from('leagues')
+        .select('id, name, owner_id, invite_code')
+        .eq('invite_code', inviteCode.trim().toUpperCase())
+        .single();
 
-      if (querySnapshot.empty) {
+      if (findError || !league) {
         setError('Código de convite inválido.');
         setSubmitting(false);
         return;
       }
 
-      const leagueDoc = querySnapshot.docs[0];
-      const leagueData = leagueDoc.data() as League;
+      // 2. Check if already a member
+      const { data: existingMember } = await supabase
+        .from('league_members')
+        .select('user_id')
+        .eq('league_id', league.id)
+        .eq('user_id', user.id)
+        .single();
 
-      if (leagueData.members.includes(user.uid)) {
+      if (existingMember) {
         setError('Você já faz parte desta liga.');
         setSubmitting(false);
         return;
       }
 
-      await updateDoc(doc(db, 'leagues', leagueDoc.id), {
-        members: arrayUnion(user.uid)
-      });
+      // 3. Add member
+      const { error: joinError } = await supabase
+        .from('league_members')
+        .insert({
+          league_id: league.id,
+          user_id: user.id
+        });
 
-      setLeagues([...leagues, { id: leagueDoc.id, ...leagueData, members: [...leagueData.members, user.uid] }]);
+      if (joinError) throw joinError;
+
+      // 4. Get updated count
+      const { count } = await supabase
+        .from('league_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('league_id', league.id);
+
+      setLeagues([...leagues, { 
+        ...league, 
+        members_count: count || 0,
+        is_owner: league.owner_id === user.id 
+      }]);
       setShowJoinModal(false);
       setInviteCode('');
       
-      // Auto-select the joined league
-      localStorage.setItem('currentLeagueId', leagueDoc.id);
+      setLeague(league.id);
       navigate('/palpites');
     } catch (err) {
       console.error("Error joining league:", err);
@@ -139,7 +198,7 @@ export default function LeaguesPage() {
   };
 
   const selectLeague = (leagueId: string) => {
-    localStorage.setItem('currentLeagueId', leagueId);
+    setLeague(leagueId);
     navigate('/palpites');
   };
 
@@ -211,9 +270,9 @@ export default function LeaguesPage() {
                     <h3 className="font-black text-lg text-white uppercase">{league.name}</h3>
                     <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-white/40">
                       <span className="flex items-center gap-1">
-                        <Users size={12} /> {league.members.length} membros
+                        <Users size={12} /> {league.members_count} membros
                       </span>
-                      {league.ownerId === user?.uid && (
+                      {league.is_owner && (
                         <span className="flex items-center gap-1 text-primary/60">
                           <Shield size={12} /> Dono
                         </span>
@@ -225,7 +284,7 @@ export default function LeaguesPage() {
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   <div className="flex-1 sm:flex-none px-4 py-2 bg-white/5 rounded-xl border border-white/10 text-center">
                     <p className="text-[8px] font-black text-white/20 uppercase mb-0.5">Código</p>
-                    <p className="text-sm font-mono font-black text-white tracking-widest">{league.inviteCode}</p>
+                    <p className="text-sm font-mono font-black text-white tracking-widest">{league.invite_code}</p>
                   </div>
                   <button
                     onClick={() => selectLeague(league.id)}

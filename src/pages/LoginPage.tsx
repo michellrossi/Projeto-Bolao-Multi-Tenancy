@@ -1,6 +1,4 @@
-import { signInWithRedirect, signInWithPopup, GoogleAuthProvider, getRedirectResult, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Mail, Github, LogIn, Lock, User as UserIcon, ArrowRight, Loader2 } from 'lucide-react';
@@ -16,45 +14,16 @@ export function LoginPage() {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
-
-  useEffect(() => {
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          const u = result.user;
-          await setDoc(doc(db, 'users', u.uid), {
-            uid: u.uid,
-            email: u.email,
-            displayName: u.displayName || u.email?.split('@')[0],
-            photoURL: u.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}`,
-            lastLogin: new Date().toISOString()
-          }, { merge: true });
-          navigate('/palpites');
-        }
-      } catch (err: any) {
-        console.error("Redirect check error:", err);
-        if (err.code !== 'auth/unauthorized-domain') {
-          setError("Erro ao processar login. Tente novamente.");
-        }
-      } finally {
-        setIsProcessingRedirect(false);
-      }
-    };
-
-    checkRedirect();
-  }, [navigate]);
 
   // Priority redirect if user is already detected
   useEffect(() => {
-    if (user && !isProcessingRedirect) {
+    if (user) {
       console.log("User detected, navigating to palpites");
       navigate('/palpites');
     }
-  }, [user, isProcessingRedirect, navigate]);
+  }, [user, navigate]);
 
-  if (authLoading || isProcessingRedirect) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-dark flex flex-col items-center justify-center gap-4">
         <Loader2 className="w-12 h-12 text-primary animate-spin" />
@@ -66,31 +35,17 @@ export function LoginPage() {
   if (user) return <Navigate to="/palpites" replace />;
 
   const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    
     try {
-      // Try Popup first as it's more reliable on modern browsers
-      const result = await signInWithPopup(auth, provider);
-      if (result.user) {
-        const u = result.user;
-        await setDoc(doc(db, 'users', u.uid), {
-          uid: u.uid,
-          email: u.email,
-          displayName: u.displayName || u.email?.split('@')[0],
-          photoURL: u.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}`,
-          lastLogin: new Date().toISOString()
-        }, { merge: true });
-        navigate('/palpites');
-      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/palpites`
+        }
+      });
+      if (error) throw error;
     } catch (err: any) {
-      console.error('Popup error, trying redirect...', err);
-      // Fallback to redirect if popup is blocked (common on mobile)
-      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
-        await signInWithRedirect(auth, provider);
-      } else {
-        setError("Não foi possível abrir a janela de login.");
-      }
+      console.error('Login error:', err);
+      setError("Não foi possível iniciar o login com Google.");
     }
   };
 
@@ -100,28 +55,36 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      let u;
       if (isRegistering) {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        u = result.user;
-        await setDoc(doc(db, 'users', u.uid), {
-          uid: u.uid,
-          email: u.email,
-          displayName: displayName || email.split('@')[0],
-          photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}`,
-          lastLogin: new Date().toISOString(),
-          approved: false
-        }, { merge: true });
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: displayName || email.split('@')[0],
+            }
+          }
+        });
+        if (error) throw error;
+        if (data.user) {
+          if (data.session) {
+            navigate('/palpites');
+          } else {
+            setError('Verifique seu e-mail para confirmar o cadastro.');
+          }
+        }
       } else {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        u = result.user;
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        navigate('/palpites');
       }
-      navigate('/palpites');
     } catch (err: any) {
       console.error("Auth error:", err);
-      setError(err.code === 'auth/user-not-found' ? 'Usuário não encontrado.' : 
-             err.code === 'auth/wrong-password' ? 'Senha incorreta.' : 
-             err.code === 'auth/email-already-in-use' ? 'E-mail já cadastrado.' : 
+      setError(err.message === 'Invalid login credentials' ? 'Credenciais inválidas.' : 
+             err.message === 'User already registered' ? 'E-mail já cadastrado.' : 
              'Erro ao autenticar. Verifique seus dados.');
     } finally {
       setLoading(false);
@@ -179,6 +142,7 @@ export function LoginPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
+                  key="display-name-input"
                 >
                   <div className="relative">
                     <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
