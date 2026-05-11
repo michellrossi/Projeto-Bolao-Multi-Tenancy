@@ -122,7 +122,7 @@ export default function TablePage() {
   );
 }
 
-function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: { match: Match; isAdmin: boolean; savedResult: any; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
+function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: { match: Match; isAdmin: boolean; savedResult: { home: number; away: number } | undefined; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
   const [home, setHome] = useState(savedResult?.home ?? '');
   const [away, setAway] = useState(savedResult?.away ?? '');
 
@@ -197,7 +197,7 @@ function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: { match: M
   );
 }
 
-function ResultRow({ match, isAdmin, savedResult, onSave, onReset }: { match: Match; isAdmin: boolean; savedResult: any; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
+function ResultRow({ match, isAdmin, savedResult, onSave, onReset }: { match: Match; isAdmin: boolean; savedResult: { home: number; away: number } | undefined; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
   const [home, setHome] = useState(savedResult?.home ?? '');
   const [away, setAway] = useState(savedResult?.away ?? '');
 

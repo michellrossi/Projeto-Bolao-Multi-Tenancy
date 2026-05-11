@@ -124,10 +124,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: any) {
     console.error('Asaas Integration Error:', error);
     if (userId) {
-      const supabaseAdmin = createClient(
-        process.env.VITE_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
       await supabaseAdmin.auth.admin.deleteUser(userId).catch(e => console.error('Rollback falhou:', e));
     }
     return res.status(500).json({ error: error.message || 'Internal Server Error' });
