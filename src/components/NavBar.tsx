@@ -1,20 +1,45 @@
+import { useState, useEffect } from 'react';
 import { Trophy, CalendarDays, LayoutGrid, BarChart3, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 
 export function NavBar() {
-  const { isAdmin } = useAuth();
-  const links = [
-    { name: 'Palpites', icon: CalendarDays, path: '/palpites' },
-    { name: 'Tabela', icon: BarChart3, path: '/tabela' },
-    { name: 'Grupos', icon: LayoutGrid, path: '/grupos' },
-    { name: 'Ranking', icon: Trophy, path: '/ranking' },
-    { name: 'Ligas', icon: Users, path: '/ligas' },
+  const { user, isAdmin, currentLeagueId } = useAuth();
+  const [isOwner, setIsOwner] = useState(false);
+  const hasValidLeague = currentLeagueId && currentLeagueId !== 'null' && currentLeagueId !== 'undefined';
+
+  useEffect(() => {
+    if (!user || !currentLeagueId) {
+      setIsOwner(false);
+      return;
+    }
+
+    import('../lib/firebase').then(({ db }) => {
+      import('firebase/firestore').then(({ doc, getDoc }) => {
+        getDoc(doc(db, 'leagues', currentLeagueId)).then(snap => {
+          if (snap.exists() && snap.data().ownerId === user.uid) {
+            setIsOwner(true);
+          } else {
+            setIsOwner(false);
+          }
+        });
+      });
+    });
+  }, [user, currentLeagueId]);
+
+  const links = hasValidLeague ? [
+    { name: 'Palpites', icon: CalendarDays, path: '/app/palpites' },
+    { name: 'Tabela', icon: BarChart3, path: '/app/tabela' },
+    { name: 'Grupos', icon: LayoutGrid, path: '/app/grupos' },
+    { name: 'Ranking', icon: Trophy, path: '/app/ranking' },
+    { name: 'Ligas', icon: Users, path: '/app/ligas' },
+  ] : [
+    { name: 'Ligas', icon: Users, path: '/app/ligas' },
   ];
 
-  if (isAdmin) {
-    links.push({ name: 'Usuários', icon: Users, path: '/usuarios' });
+  if ((isAdmin || isOwner) && hasValidLeague) {
+    links.push({ name: 'Participantes', icon: Users, path: '/app/usuarios' });
   }
 
   return (

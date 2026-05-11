@@ -9,16 +9,15 @@ import { useNavigate } from 'react-router-dom';
 interface League {
   id: string;
   name: string;
-  owner_id: string;
-  invite_code: string;
-  members_count: number;
-  is_owner: boolean;
+  ownerId: string;
+  inviteCode: string;
+  members: string[];
 }
 
 export default function LeaguesPage() {
   const { user } = useAuth();
-  const { setLeague } = useLeague();
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [ownedLeaguesCount, setOwnedLeaguesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -35,38 +34,13 @@ export default function LeaguesPage() {
 
   const fetchLeagues = async () => {
     try {
-      // Fetch leagues where the user is a member
-      const { data, error } = await supabase
-        .from('leagues')
-        .select(`
-          id, 
-          name, 
-          owner_id, 
-          invite_code,
-          league_members!inner(user_id)
-        `)
-        .eq('league_members.user_id', user?.id);
-
-      if (error) throw error;
-
-      // For each league, get the total member count
-      const leaguesWithCount = await Promise.all((data || []).map(async (l: any) => {
-        const { count } = await supabase
-          .from('league_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('league_id', l.id);
-        
-        return {
-          id: l.id,
-          name: l.name,
-          owner_id: l.owner_id,
-          invite_code: l.invite_code,
-          members_count: count || 0,
-          is_owner: l.owner_id === user?.id
-        };
-      }));
-
-      setLeagues(leaguesWithCount);
+      const q = query(collection(db, 'leagues'), where('members', 'array-contains', user?.uid));
+      const querySnapshot = await getDocs(q);
+      const leagueList: League[] = [];
+      querySnapshot.forEach((doc) => {
+        leagueList.push({ id: doc.id, ...doc.data() } as League);
+      });
+      setLeagues(leagueList);
     } catch (err) {
       console.error("Error fetching leagues:", err);
     } finally {
@@ -83,32 +57,19 @@ export default function LeaguesPage() {
 
     try {
       const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-      
-      // 1. Create the league
-      const { data: newLeague, error: leagueError } = await supabase
-        .from('leagues')
-        .insert({
-          name: leagueName,
-          owner_id: user.id,
-          invite_code: generatedCode,
-        })
-        .select()
-        .single();
 
-      if (leagueError) throw leagueError;
+      const leagueData = {
+        name: leagueName,
+        ownerId: user.uid,
+        inviteCode: generatedCode,
+        members: [user.uid],
+        createdAt: new Date().toISOString(),
+      };
 
-      // 2. Add owner as first member
-      const { error: memberError } = await supabase
-        .from('league_members')
-        .insert({
-          league_id: newLeague.id,
-          user_id: user.id
-        });
+      const docRef = await addDoc(collection(db, 'leagues'), leagueData);
 
-      if (memberError) throw memberError;
-      
-      setLeagues([...leagues, { 
-        id: newLeague.id, 
+      setLeagues([...leagues, {
+        id: newLeague.id,
         name: newLeague.name,
         owner_id: newLeague.owner_id,
         invite_code: newLeague.invite_code,
@@ -117,8 +78,9 @@ export default function LeaguesPage() {
       }]);
       setShowCreateModal(false);
       setLeagueName('');
-      
-      setLeague(newLeague.id);
+
+      // Auto-select the newly created league
+      localStorage.setItem('currentLeagueId', docRef.id);
       navigate('/palpites');
     } catch (err) {
       console.error("Error creating league:", err);
@@ -163,6 +125,12 @@ export default function LeaguesPage() {
         return;
       }
 
+      if (leagueData.members.length >= (leagueData.maxParticipants || 10)) {
+        setError('Esta liga atingiu o limite de participantes do plano atual.');
+        setSubmitting(false);
+        return;
+      }
+
       // 3. Add member
       const { error: joinError } = await supabase
         .from('league_members')
@@ -179,15 +147,16 @@ export default function LeaguesPage() {
         .select('*', { count: 'exact', head: true })
         .eq('league_id', league.id);
 
-      setLeagues([...leagues, { 
-        ...league, 
+      setLeagues([...leagues, {
+        ...league,
         members_count: count || 0,
-        is_owner: league.owner_id === user.id 
+        is_owner: league.owner_id === user.id
       }]);
       setShowJoinModal(false);
       setInviteCode('');
-      
-      setLeague(league.id);
+
+      // Auto-select the joined league
+      localStorage.setItem('currentLeagueId', leagueDoc.id);
       navigate('/palpites');
     } catch (err) {
       console.error("Error joining league:", err);
@@ -198,7 +167,7 @@ export default function LeaguesPage() {
   };
 
   const selectLeague = (leagueId: string) => {
-    setLeague(leagueId);
+    localStorage.setItem('currentLeagueId', leagueId);
     navigate('/palpites');
   };
 
@@ -218,16 +187,32 @@ export default function LeaguesPage() {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Create League Card */}
         <motion.button
-          whileHover={{ y: -5 }}
-          onClick={() => setShowCreateModal(true)}
-          className="flex flex-col items-center justify-center gap-6 p-10 glass-dark rounded-[3rem] border-white/5 hover:border-primary/20 transition-all group"
+          whileHover={ownedLeaguesCount < maxLeaguesAllowed ? { y: -5 } : {}}
+          onClick={() => {
+            if (ownedLeaguesCount < maxLeaguesAllowed) {
+              setShowCreateModal(true);
+            } else {
+              alert(hasLicense ? "Você atingiu o limite de bolões do seu plano." : "Apenas usuários com código de acesso podem criar bolões.");
+            }
+          }}
+          className={`flex flex-col items-center justify-center gap-6 p-10 glass-dark rounded-[3rem] border transition-all group ${ownedLeaguesCount < maxLeaguesAllowed
+              ? 'border-white/5 hover:border-primary/20'
+              : 'border-red-500/10 opacity-60 grayscale cursor-not-allowed'
+            }`}
         >
-          <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Plus className="text-primary w-10 h-10" />
+          <div className={`w-20 h-20 rounded-3xl flex items-center justify-center transition-transform ${ownedLeaguesCount < maxLeaguesAllowed ? 'bg-primary/10 group-hover:scale-110' : 'bg-white/5'
+            }`}>
+            <Plus className={`${ownedLeaguesCount < maxLeaguesAllowed ? 'text-primary' : 'text-white/20'} w-10 h-10`} />
           </div>
           <div className="text-center">
             <h2 className="text-xl font-black text-white uppercase mb-2">Criar Novo Bolão</h2>
-            <p className="text-white/40 text-sm">Seja o dono e convide sua galera</p>
+            <p className="text-white/40 text-sm">
+              {ownedLeaguesCount < maxLeaguesAllowed
+                ? `Você pode criar mais ${maxLeaguesAllowed - ownedLeaguesCount} bolão(ões)`
+                : hasLicense
+                  ? "Limite do plano atingido"
+                  : "Requer código de acesso"}
+            </p>
           </div>
         </motion.button>
 
@@ -270,7 +255,7 @@ export default function LeaguesPage() {
                     <h3 className="font-black text-lg text-white uppercase">{league.name}</h3>
                     <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-white/40">
                       <span className="flex items-center gap-1">
-                        <Users size={12} /> {league.members_count} membros
+                        <Users size={12} /> {league.members.length} membros
                       </span>
                       {league.is_owner && (
                         <span className="flex items-center gap-1 text-primary/60">

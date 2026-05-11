@@ -13,7 +13,7 @@ const TABS = [...WORLD_CUP_2026_ROUNDS.map(r => r.name), "Mata-Mata"];
 
 export default function PredictionsPage() {
   const { user, isApproved } = useAuth();
-  const { currentLeagueId } = useLeague();
+  const currentLeagueId = localStorage.getItem('currentLeagueId');
   const [activeTab, setActiveTab] = useState("1ª Rodada");
   const [predictions, setPredictions] = useState<Record<string, { home: number; away: number }>>({});
   const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
@@ -46,7 +46,7 @@ export default function PredictionsPage() {
         .select('*')
         .eq('league_id', currentLeagueId)
         .eq('user_id', user.id);
-      
+
       if (data) {
         const predMap: any = {};
         data.forEach(p => predMap[p.match_id] = { home: p.home_score, away: p.away_score });
@@ -69,9 +69,9 @@ export default function PredictionsPage() {
     // Subscribe to predictions changes for this user
     const predsSub = supabase
       .channel('predictions_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
         table: 'predictions',
         filter: `user_id=eq.${user.id}`
       }, () => {
@@ -100,7 +100,7 @@ export default function PredictionsPage() {
         }, { onConflict: 'league_id,user_id,match_id' });
 
       if (error) throw error;
-      
+
       setPredictions(prev => ({ ...prev, [matchId]: { home, away } }));
     } catch (error) {
       console.error("Error saving prediction:", error);
@@ -127,13 +127,13 @@ export default function PredictionsPage() {
     );
   }
 
-  const currentMatches = activeTab === "Mata-Mata" 
+  const currentMatches = activeTab === "Mata-Mata"
     ? KNOCKOUT_MATCHES.map(m => ({
-        ...m,
-        homeTeam: getKnockoutTeam(standings, m.homePlaceholder, {} as any),
-        awayTeam: getKnockoutTeam(standings, m.awayPlaceholder, {} as any),
-        group: m.phase
-      }))
+      ...m,
+      homeTeam: getKnockoutTeam(standings, m.homePlaceholder, {} as any),
+      awayTeam: getKnockoutTeam(standings, m.awayPlaceholder, {} as any),
+      group: m.phase
+    }))
     : activeRound?.matches || [];
 
   return (
@@ -147,17 +147,16 @@ export default function PredictionsPage() {
             Preencha seus palpites e suba no ranking da galera.
           </p>
         </div>
-        
+
         <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
           {TABS.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap border ${
-                activeTab === tab 
-                  ? 'bg-primary text-dark border-primary glow-primary' 
+              className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap border ${activeTab === tab
+                  ? 'bg-primary text-dark border-primary glow-primary'
                   : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
-              }`}
+                }`}
             >
               {tab}
             </button>
@@ -174,8 +173,8 @@ export default function PredictionsPage() {
           className="grid gap-4 md:grid-cols-2"
         >
           {currentMatches.map((match, idx) => {
-            const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx-1].group !== match.group);
-            
+            const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx - 1].group !== match.group);
+
             return (
               <div key={match.id} className={showPhase ? "md:col-span-2 space-y-4" : ""}>
                 {showPhase && (
@@ -183,8 +182,8 @@ export default function PredictionsPage() {
                     {match.group}
                   </h3>
                 )}
-                <MatchCard 
-                  match={match} 
+                <MatchCard
+                  match={match}
                   prediction={predictions[match.id]}
                   result={results[match.id]}
                   onSave={handleSavePrediction}
@@ -202,7 +201,7 @@ function MatchCard({ match, prediction, result, onSave }: any) {
   const [home, setHome] = useState(prediction?.home ?? '');
   const [away, setAway] = useState(prediction?.away ?? '');
   const locked = isMatchLocked(match.date, match.time);
-  
+
   useEffect(() => {
     if (prediction) {
       setHome(prediction.home);
@@ -216,7 +215,7 @@ function MatchCard({ match, prediction, result, onSave }: any) {
   ) : null;
 
   return (
-    <motion.div 
+    <motion.div
       whileHover={!locked ? { y: -4 } : {}}
       className={`glass-dark p-6 rounded-[2rem] transition-all group relative overflow-hidden ${locked ? 'opacity-80' : 'hover:border-primary/30'}`}
     >
@@ -225,7 +224,7 @@ function MatchCard({ match, prediction, result, onSave }: any) {
         <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
           <span className="text-[10px] font-black uppercase tracking-widest text-primary">Grupo {match.group}</span>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {locked ? (
             <div className="px-3 py-1 bg-red-500/10 text-red-500 rounded-full font-black text-[9px] uppercase tracking-widest border border-red-500/10 flex items-center gap-1.5">
@@ -261,8 +260,8 @@ function MatchCard({ match, prediction, result, onSave }: any) {
             <img src={getFlagUrl(match.homeTeam)} alt={match.homeTeam} className="w-full h-full object-cover scale-110 flag-3d" />
           </div>
           <span className="text-xs font-black text-center leading-tight min-h-[32px] flex items-center uppercase tracking-tight text-white/80">{match.homeTeam}</span>
-          <input 
-            type="number" 
+          <input
+            type="number"
             value={home}
             onChange={(e) => setHome(e.target.value)}
             disabled={locked}
@@ -274,10 +273,10 @@ function MatchCard({ match, prediction, result, onSave }: any) {
         {/* Center Section: X, Result and Points */}
         <div className="flex flex-col items-center justify-center gap-4 min-w-[80px]">
           <div className="text-2xl font-black text-white/10">VS</div>
-          
+
           <AnimatePresence>
             {result && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex flex-col items-center gap-3"
@@ -290,14 +289,13 @@ function MatchCard({ match, prediction, result, onSave }: any) {
                 </div>
 
                 {points !== null && (
-                  <motion.div 
+                  <motion.div
                     initial={{ y: 10, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className={`px-3 py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg ${
-                      points === 3 ? 'bg-primary text-dark glow-primary' : 
-                      points === 1 ? 'bg-secondary text-dark' : 
-                      'bg-white/10 text-white/40 border border-white/10'
-                    }`}
+                    className={`px-3 py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg ${points === 3 ? 'bg-primary text-dark glow-primary' :
+                        points === 1 ? 'bg-secondary text-dark' :
+                          'bg-white/10 text-white/40 border border-white/10'
+                      }`}
                   >
                     <Trophy size={12} />
                     {points} PTS
@@ -314,8 +312,8 @@ function MatchCard({ match, prediction, result, onSave }: any) {
             <img src={getFlagUrl(match.awayTeam)} alt={match.awayTeam} className="w-full h-full object-cover scale-110 flag-3d" />
           </div>
           <span className="text-xs font-black text-center leading-tight min-h-[32px] flex items-center uppercase tracking-tight text-white/80">{match.awayTeam}</span>
-          <input 
-            type="number" 
+          <input
+            type="number"
             value={away}
             onChange={(e) => setAway(e.target.value)}
             disabled={locked}
@@ -324,11 +322,11 @@ function MatchCard({ match, prediction, result, onSave }: any) {
           />
         </div>
       </div>
-      
+
       {/* Action Footer */}
       <div className="mt-8">
         {!locked ? (
-          <button 
+          <button
             onClick={() => onSave(match.id, Number(home), Number(away))}
             className="w-full py-4 rounded-[1.25rem] bg-white/5 hover:bg-primary hover:text-dark text-[11px] font-black uppercase tracking-widest transition-all border border-white/5 flex items-center justify-center gap-2 group/btn shadow-xl active:scale-95"
           >
