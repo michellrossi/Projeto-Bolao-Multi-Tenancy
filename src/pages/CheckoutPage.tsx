@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ShieldCheck, Lock, CreditCard, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Lock, CreditCard, ArrowLeft, Loader2, CheckCircle2, QrCode, Copy } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const isValidCPF = (cpf: string) => {
@@ -29,6 +29,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [generatedCode, setGeneratedCode] = useState('');
+  const [pixData, setPixData] = useState<{ qrCode: string; copyPaste: string } | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -40,7 +41,8 @@ export default function CheckoutPage() {
     phone: '',
     cardNumber: '',
     expiry: '',
-    cvc: ''
+    cvc: '',
+    paymentMethod: 'CREDIT_CARD'
   });
 
   const handlePurchase = async (e: React.FormEvent) => {
@@ -55,7 +57,7 @@ export default function CheckoutPage() {
 
     try {
       // 1. Processar Pagamento via Asaas (Guest Checkout)
-      let paymentResult: { paymentId?: string; error?: string };
+      let paymentResult: { paymentId?: string; error?: string; isPix?: boolean; pixQrCode?: string; pixCopyPaste?: string; };
       try {
         const paymentResponse = await fetch('/api/checkout', {
           method: 'POST',
@@ -68,8 +70,8 @@ export default function CheckoutPage() {
             addressNumber: formData.addressNumber,
             phone: formData.phone,
             plan,
-            // userId omitido: a identificação no Asaas será via EMAIL_
-            creditCard: {
+            billingType: formData.paymentMethod,
+            creditCard: formData.paymentMethod === 'PIX' ? undefined : {
               number: formData.cardNumber,
               expiry: formData.expiry,
               cvc: formData.cvc
@@ -109,8 +111,8 @@ export default function CheckoutPage() {
           photo_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
           max_participants_allowed: plan.participants,
           max_leagues_allowed: plan.name === 'Bronze' ? 1 : 999,
-          has_license: true,
-          approved: true,
+          has_license: paymentResult.isPix ? false : true,
+          approved: paymentResult.isPix ? false : true,
           plan_type: plan.name
         });
 
@@ -137,24 +139,29 @@ export default function CheckoutPage() {
           max_participants: plan.participants,
           used_by: user.id,
           plan_type: plan.name,
-          status: 'used'
+          status: paymentResult.isPix ? 'pending' : 'used'
         });
 
       if (codeError) throw codeError;
 
-      // 7. Fire-and-forget welcome email
-      fetch('/api/welcome-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          plan,
-          code,
-        }),
-      }).catch(err => console.warn('welcome-email failed (non-blocking):', err));
+      // 7. Fire-and-forget welcome email (se aprovado imediato)
+      if (!paymentResult.isPix) {
+        fetch('/api/welcome-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            plan,
+            code,
+          }),
+        }).catch(err => console.warn('welcome-email failed (non-blocking):', err));
+      }
 
       setGeneratedCode(code);
+      if (paymentResult.isPix) {
+        setPixData({ qrCode: paymentResult.pixQrCode!, copyPaste: paymentResult.pixCopyPaste! });
+      }
       setSuccess(true);
     } catch (error: any) {
       console.error("Purchase error:", error);
@@ -165,6 +172,60 @@ export default function CheckoutPage() {
   };
 
   if (success) {
+    if (pixData) {
+      return (
+        <div className="min-h-screen bg-dark flex flex-col items-center justify-center p-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-md w-full glass-dark p-8 md:p-10 rounded-[3rem] border border-primary/20 text-center space-y-6"
+          >
+            <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto">
+              <QrCode className="text-primary w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-black text-white uppercase tracking-tighter">Pague via PIX</h1>
+              <p className="text-white/40 text-sm">Escaneie o QR Code abaixo com o app do seu banco para liberar seu acesso.</p>
+            </div>
+            
+            <div className="bg-white p-4 rounded-3xl mx-auto w-fit">
+              <img src={`data:image/png;base64,${pixData.qrCode}`} alt="QR Code PIX" className="w-48 h-48" />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-widest font-black text-white/40">PIX Copia e Cola</p>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  value={pixData.copyPaste} 
+                  readOnly 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none"
+                />
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(pixData.copyPaste);
+                    alert('Código PIX copiado!');
+                  }}
+                  className="p-3 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors shrink-0"
+                >
+                  <Copy size={16} />
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-white/40">Após o pagamento, sua licença será ativada automaticamente em até 5 minutos.</p>
+            
+            <button 
+              onClick={() => navigate('/login')}
+              className="w-full py-4 border border-white/10 text-white font-black rounded-2xl uppercase tracking-widest text-xs hover:bg-white/5 transition-all"
+            >
+              Ir para o Login
+            </button>
+          </motion.div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-dark flex items-center justify-center p-6">
         <motion.div 
@@ -322,38 +383,72 @@ export default function CheckoutPage() {
               <div className="flex justify-between items-center">
                 <h3 className="text-xs font-black uppercase tracking-widest text-white/40">Pagamento</h3>
                 <div className="flex gap-2">
-                  <CreditCard size={16} className="text-white/20" />
                   <Lock size={16} className="text-white/20" />
                 </div>
               </div>
-              <div className="space-y-4">
-                <input 
-                  type="text" 
-                  placeholder="Número do Cartão" 
-                  required
-                  value={formData.cardNumber}
-                  onChange={e => setFormData({...formData, cardNumber: e.target.value})}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all font-mono"
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <input 
-                    type="text" 
-                    placeholder="MM/AA" 
-                    required
-                    value={formData.expiry}
-                    onChange={e => setFormData({...formData, expiry: e.target.value})}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all text-center"
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="CVC" 
-                    required
-                    value={formData.cvc}
-                    onChange={e => setFormData({...formData, cvc: e.target.value})}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all text-center"
-                  />
-                </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, paymentMethod: 'CREDIT_CARD'})}
+                  className={`py-4 rounded-2xl flex items-center justify-center gap-2 font-black uppercase tracking-widest text-xs transition-all border ${
+                    formData.paymentMethod === 'CREDIT_CARD' 
+                      ? 'bg-primary/10 border-primary text-primary' 
+                      : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'
+                  }`}
+                >
+                  <CreditCard size={16} /> Cartão
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, paymentMethod: 'PIX'})}
+                  className={`py-4 rounded-2xl flex items-center justify-center gap-2 font-black uppercase tracking-widest text-xs transition-all border ${
+                    formData.paymentMethod === 'PIX' 
+                      ? 'bg-primary/10 border-primary text-primary' 
+                      : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'
+                  }`}
+                >
+                  <QrCode size={16} /> PIX
+                </button>
               </div>
+
+              {formData.paymentMethod === 'CREDIT_CARD' && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <input 
+                    type="text" 
+                    placeholder="Número do Cartão" 
+                    required
+                    value={formData.cardNumber}
+                    onChange={e => setFormData({...formData, cardNumber: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all font-mono"
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <input 
+                      type="text" 
+                      placeholder="MM/AA" 
+                      required
+                      value={formData.expiry}
+                      onChange={e => setFormData({...formData, expiry: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all text-center"
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="CVC" 
+                      required
+                      value={formData.cvc}
+                      onChange={e => setFormData({...formData, cvc: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all text-center"
+                    />
+                  </div>
+                </div>
+              )}
+              {formData.paymentMethod === 'PIX' && (
+                <div className="p-6 bg-primary/5 border border-primary/10 rounded-2xl text-center space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <QrCode className="text-primary w-8 h-8 mx-auto" />
+                  <p className="text-primary font-bold text-sm">Liberação mais rápida</p>
+                  <p className="text-white/40 text-xs">O QR Code será gerado na próxima tela.</p>
+                </div>
+              )}
             </div>
 
             <button 

@@ -6,7 +6,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { name, email, plan, creditCard, cpfCnpj, postalCode, addressNumber, phone, userId } = req.body;
+  const { name, email, plan, creditCard, cpfCnpj, postalCode, addressNumber, phone, userId, billingType } = req.body;
   const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
   const ASAAS_API_URL = process.env.ASAAS_API_URL;
 
@@ -53,31 +53,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 2. Create Payment
-    const paymentBody = {
+    const isPix = billingType === 'PIX';
+
+    const paymentBody: any = {
       customer: customerId,
-      billingType: 'CREDIT_CARD',
+      billingType: isPix ? 'PIX' : 'CREDIT_CARD',
       value: parseFloat(plan.price),
       dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
       description: `Assinatura Plano ${plan.name} - Bolão Multi Tenancy`,
       // FIX #7: Adiciona o nome do plano na externalReference para o Webhook não depender apenas do valor
       externalReference: userId ? `USER_${userId}_PLAN_${plan.name}` : `EMAIL_${email}_PLAN_${plan.name}`,
-      creditCard: {
+      remoteIp: req.headers['x-forwarded-for'] || req.socket.remoteAddress
+    };
+
+    if (!isPix) {
+      paymentBody.creditCard = {
         holderName: name,
         number: creditCard.number.replace(/\s/g, ''),
         expiryMonth: creditCard.expiry.split('/')[0],
         expiryYear: '20' + creditCard.expiry.split('/')[1],
         ccv: creditCard.cvc
-      },
-      creditCardHolderInfo: {
+      };
+      paymentBody.creditCardHolderInfo = {
         name: name,
         email: email,
         cpfCnpj: cpfCnpj.replace(/\D/g, ''),
         postalCode: postalCode.replace(/\D/g, ''),
         addressNumber: addressNumber,
         phone: phone ? phone.replace(/\D/g, '') : undefined,
-      },
-      remoteIp: req.headers['x-forwarded-for'] || req.socket.remoteAddress
-    };
+      };
+    }
 
     const paymentResponse = await fetch(`${ASAAS_API_URL}/payments`, {
       method: 'POST',
@@ -93,6 +98,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (paymentData.errors) {
       if (userId) await supabaseAdmin.auth.admin.deleteUser(userId);
       return res.status(400).json({ error: paymentData.errors[0].description });
+    }
+
+    if (isPix && paymentData.status === 'PENDING') {
+      const qrResponse = await fetch(`${ASAAS_API_URL}/payments/${paymentData.id}/pixQrCode`, {
+        headers: { 'access_token': ASAAS_API_KEY }
+      });
+      const qrData = await qrResponse.json();
+      return res.status(200).json({ 
+        success: true, 
+        paymentId: paymentData.id, 
+        isPix: true, 
+        pixQrCode: qrData.encodedImage, 
+        pixCopyPaste: qrData.payload 
+      });
     }
 
     if (paymentData.status === 'CONFIRMED' || paymentData.status === 'RECEIVED') {

@@ -63,6 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .from('users')
         .update({ 
           has_license: true, 
+          approved: true,
           max_participants_allowed: maxParticipants,
           max_leagues_allowed: maxLeagues,
           plan_type: planName 
