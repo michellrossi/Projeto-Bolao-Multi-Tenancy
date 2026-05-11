@@ -9,6 +9,9 @@ create table users (
   photo_url text,
   last_login timestamp with time zone default now(),
   approved boolean default false,
+  has_license boolean default false,
+  max_participants_allowed integer default 10,
+  plan_type text,
   created_at timestamp with time zone default now()
 );
 
@@ -52,6 +55,27 @@ create table predictions (
   away_score integer not null,
   updated_at timestamp with time zone default now(),
   unique(league_id, user_id, match_id)
+);
+
+-- Tabela de Compras
+create table purchases (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references users(id),
+  plan text not null,
+  price text not null,
+  code text not null,
+  payment_id text,
+  created_at timestamp with time zone default now()
+);
+
+-- Tabela de Códigos de Licença
+create table purchase_codes (
+  code text primary key,
+  max_participants integer not null,
+  used_by uuid references users(id),
+  used_at timestamp with time zone default now(),
+  plan_type text,
+  status text default 'active'
 );
 
 -- Row Level Security (RLS) - Opcional mas recomendado

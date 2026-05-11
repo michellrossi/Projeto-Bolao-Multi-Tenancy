@@ -17,6 +17,8 @@ export default function CheckoutPage() {
     name: '',
     email: '',
     password: '',
+    cpf: '',
+    postalCode: '',
     cardNumber: '',
     expiry: '',
     cvc: ''
@@ -27,7 +29,31 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      // 1. Create User in Supabase Auth
+      // 1. Process Payment with Asaas (via our backend)
+      const paymentResponse = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          cpfCnpj: formData.cpf,
+          postalCode: formData.postalCode,
+          plan: plan,
+          creditCard: {
+            number: formData.cardNumber,
+            expiry: formData.expiry,
+            cvc: formData.cvc
+          }
+        })
+      });
+
+      const paymentResult = await paymentResponse.json();
+
+      if (!paymentResponse.ok) {
+        throw new Error(paymentResult.error || 'Erro ao processar pagamento.');
+      }
+
+      // 2. Create User in Supabase Auth (Payment Success!)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -42,10 +68,10 @@ export default function CheckoutPage() {
       const user = authData.user;
       if (!user) throw new Error("Erro ao criar usuário.");
 
-      // 2. Generate Code
+      // 3. Generate Code
       const code = Math.random().toString(36).substring(2, 10).toUpperCase();
       
-      // 3. Update User Data with License Info in Supabase 'users' table
+      // 4. Update User Data with License Info
       const { error: userError } = await supabase
         .from('users')
         .upsert({
@@ -61,19 +87,20 @@ export default function CheckoutPage() {
 
       if (userError) throw userError;
 
-      // 4. Save Purchase Record
+      // 5. Save Purchase Record
       const { error: purchaseError } = await supabase
         .from('purchases')
         .insert({
           user_id: user.id,
           plan: plan.name,
           price: plan.price,
-          code: code
+          code: code,
+          payment_id: paymentResult.paymentId
         });
 
       if (purchaseError) throw purchaseError;
 
-      // 5. Save License Code
+      // 6. Save License Code
       const { error: codeError } = await supabase
         .from('purchase_codes')
         .insert({
@@ -211,6 +238,24 @@ export default function CheckoutPage() {
                   onChange={e => setFormData({...formData, password: e.target.value})}
                   className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all"
                 />
+                <div className="grid grid-cols-2 gap-4">
+                  <input 
+                    type="text" 
+                    placeholder="CPF" 
+                    required
+                    value={formData.cpf}
+                    onChange={e => setFormData({...formData, cpf: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all"
+                  />
+                  <input 
+                    type="text" 
+                    placeholder="CEP" 
+                    required
+                    value={formData.postalCode}
+                    onChange={e => setFormData({...formData, postalCode: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm focus:outline-none focus:border-primary transition-all"
+                  />
+                </div>
               </div>
             </div>
 
