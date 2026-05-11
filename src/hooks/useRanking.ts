@@ -52,7 +52,7 @@ export function useRanking(leagueId: string | null) {
         allPredictions[p.user_id][p.match_id] = { home: p.home_score, away: p.away_score };
       });
 
-      // 5. Cálculo de pontos (inevitável no cliente por ora; escalável via SQL View/Edge Function)
+      // 5. Cálculo de pontos + tendência
       const rankingList: UserRanking[] = (membersData as LeagueMember[] ?? []).map(member => {
         const profile = member.users;
         const userId = profile.id;
@@ -74,7 +74,7 @@ export function useRanking(leagueId: string | null) {
           name: profile.display_name || 'Competidor',
           photo: profile.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
           points: totalPoints,
-          trend: 'stable',
+          trend: 'stable' as const,
           trendValue: 0,
         };
       });
@@ -83,6 +83,30 @@ export function useRanking(leagueId: string | null) {
         if (b.points !== a.points) return b.points - a.points;
         return a.name.localeCompare(b.name);
       });
+
+      // Calcula tendência comparando com snapshot anterior (sessionStorage)
+      const snapshotKey = `ranking_snapshot_${leagueId}`;
+      const prevSnapshotRaw = sessionStorage.getItem(snapshotKey);
+      if (prevSnapshotRaw) {
+        const prevPositions: Record<string, number> = JSON.parse(prevSnapshotRaw);
+        rankingList.forEach((player, currentPos) => {
+          const prevPos = prevPositions[player.id];
+          if (prevPos === undefined) return;
+          const diff = prevPos - currentPos; // positivo = subiu
+          if (diff > 0) {
+            player.trend = 'up';
+            player.trendValue = diff;
+          } else if (diff < 0) {
+            player.trend = 'down';
+            player.trendValue = Math.abs(diff);
+          }
+        });
+      }
+
+      // Salva snapshot atual para próxima comparação
+      const newSnapshot: Record<string, number> = {};
+      rankingList.forEach((p, i) => { newSnapshot[p.id] = i; });
+      sessionStorage.setItem(snapshotKey, JSON.stringify(newSnapshot));
 
       setRankings(rankingList);
     } catch (error) {

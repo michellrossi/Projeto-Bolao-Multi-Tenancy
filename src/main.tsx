@@ -12,6 +12,9 @@ import RulesPage from './pages/RulesPage';
 import LeaguesPage from './pages/LeaguesPage';
 import LandingPage from './pages/LandingPage';
 import CheckoutPage from './pages/CheckoutPage';
+import ProfilePage from './pages/ProfilePage';
+import TermosPage from './pages/TermosPage';
+import PrivacidadePage from './pages/PrivacidadePage';
 import { AuthProvider } from './hooks/useAuth';
 import { LeagueProvider } from './hooks/useLeague';
 import './index.css';
@@ -30,6 +33,14 @@ const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
+    path: '/termos',
+    element: <TermosPage />,
+  },
+  {
+    path: '/privacidade',
+    element: <PrivacidadePage />,
+  },
+  {
     path: '/app',
     element: <App />,
     children: [
@@ -41,6 +52,7 @@ const router = createBrowserRouter([
       { path: '/app/usuarios', element: <UsersPage /> },
       { path: '/app/regras', element: <RulesPage /> },
       { path: '/app/ligas', element: <LeaguesPage /> },
+      { path: '/app/perfil', element: <ProfilePage /> },
     ],
   },
 ]);

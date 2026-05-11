@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useLeague } from '../hooks/useLeague';
-import { Plus, Users, LogIn, Shield, Trophy, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Plus, Users, LogIn, Shield, Trophy, ArrowRight, CheckCircle2, Trash2, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface League {
@@ -219,7 +219,30 @@ export default function LeaguesPage() {
 
   const selectLeague = (leagueId: string) => {
     localStorage.setItem('currentLeagueId', leagueId);
-    navigate('/palpites');
+    navigate('/app/palpites');
+  };
+
+  const handleLeaveLeague = async (leagueId: string, isOwner: boolean) => {
+    if (isOwner) {
+      const ok = window.confirm('Você é o dono desta liga. Ao sair, a liga e todos os dados serão EXCLUÍDOS permanentemente. Confirma?');
+      if (!ok) return;
+      // Exclusão em cascata (league_members, predictions, leagues)
+      const { error } = await supabase.from('leagues').delete().eq('id', leagueId);
+      if (error) { alert('Erro ao excluir liga: ' + error.message); return; }
+    } else {
+      const ok = window.confirm('Deseja sair desta liga? Seus palpites nela serão removidos.');
+      if (!ok) return;
+      const { error } = await supabase
+        .from('league_members')
+        .delete()
+        .eq('league_id', leagueId)
+        .eq('user_id', user?.id);
+      if (error) { alert('Erro ao sair da liga: ' + error.message); return; }
+    }
+    setLeagues(prev => prev.filter(l => l.id !== leagueId));
+    if (localStorage.getItem('currentLeagueId') === leagueId) {
+      localStorage.removeItem('currentLeagueId');
+    }
   };
 
   if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
@@ -327,6 +350,17 @@ export default function LeaguesPage() {
                     className="flex-1 sm:flex-none px-6 py-3 bg-primary text-dark font-black rounded-xl uppercase text-xs tracking-widest hover:scale-105 transition-all flex items-center justify-center gap-2"
                   >
                     Entrar <ArrowRight size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleLeaveLeague(league.id, league.is_owner)}
+                    title={league.is_owner ? 'Excluir liga' : 'Sair da liga'}
+                    className={`p-3 rounded-xl border transition-all ${
+                      league.is_owner
+                        ? 'border-red-500/20 text-red-500 hover:bg-red-500/10'
+                        : 'border-white/10 text-white/30 hover:text-white/60'
+                    }`}
+                  >
+                    {league.is_owner ? <Trash2 size={16} /> : <LogOut size={16} />}
                   </button>
                 </div>
               </motion.div>

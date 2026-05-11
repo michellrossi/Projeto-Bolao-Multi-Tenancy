@@ -114,6 +114,18 @@ export default function CheckoutPage() {
 
       if (codeError) throw codeError;
 
+      // 7. Fire-and-forget welcome email
+      fetch('/api/welcome-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          plan,
+          code,
+        }),
+      }).catch(err => console.warn('welcome-email failed (non-blocking):', err));
+
       setGeneratedCode(code);
       setSuccess(true);
     } catch (error: any) {
@@ -307,7 +319,10 @@ export default function CheckoutPage() {
             </button>
 
             <p className="text-center text-[9px] text-white/20 uppercase font-black tracking-widest">
-              Ao clicar em pagar você aceita nossos termos de uso
+              Ao clicar em pagar você aceita os{' '}
+              <a href="/termos" target="_blank" className="underline hover:text-primary transition-colors">Termos de Uso</a>
+              {' '}e a{' '}
+              <a href="/privacidade" target="_blank" className="underline hover:text-primary transition-colors">Política de Privacidade</a>
             </p>
           </form>
         </div>
