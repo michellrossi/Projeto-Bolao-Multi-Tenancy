@@ -69,9 +69,6 @@ export default function CheckoutPage() {
           throw new Error(paymentResult.error || 'Pagamento não autorizado.');
         }
       } catch (paymentError: unknown) {
-        // FIX #3: Rollback — marca o usuário como não aprovado para ele poder tentar de novo
-        // (O Webhook do Asaas irá liberar quando o pagamento de fato confirmar)
-        await supabase.from('users').update({ has_license: false, approved: false }).eq('id', user.id);
         const msg = paymentError instanceof Error ? paymentError.message : 'Erro no pagamento.';
         throw new Error(msg);
       }

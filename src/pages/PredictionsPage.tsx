@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
+import { WORLD_CUP_2026_ROUNDS, Match } from '../lib/matches';
 import { KNOCKOUT_MATCHES } from '../lib/knockout';
 import { Calendar, Users, Trophy, Lock, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { getFlagUrl } from '../lib/flags';
@@ -197,7 +197,7 @@ export default function PredictionsPage() {
   );
 }
 
-function MatchCard({ match, prediction, result, onSave }: { match: any; prediction: any; result: any; onSave: (id: string, home: number, away: number) => void }) {
+function MatchCard({ match, prediction, result, onSave }: { match: Match; prediction: any; result: any; onSave: (id: string, home: number, away: number) => void }) {
   const [home, setHome] = useState(prediction?.home ?? '');
   const [away, setAway] = useState(prediction?.away ?? '');
   const locked = isMatchLocked(match.date, match.time);

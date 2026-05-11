@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
+import { WORLD_CUP_2026_ROUNDS, Match } from '../lib/matches';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { getFlagUrl } from '../lib/flags';
@@ -122,7 +122,7 @@ export default function TablePage() {
   );
 }
 
-function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: { match: any; isAdmin: boolean; savedResult: any; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
+function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: { match: Match; isAdmin: boolean; savedResult: any; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
   const [home, setHome] = useState(savedResult?.home ?? '');
   const [away, setAway] = useState(savedResult?.away ?? '');
 
@@ -197,7 +197,7 @@ function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: { match: a
   );
 }
 
-function ResultRow({ match, isAdmin, savedResult, onSave, onReset }: { match: any; isAdmin: boolean; savedResult: any; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
+function ResultRow({ match, isAdmin, savedResult, onSave, onReset }: { match: Match; isAdmin: boolean; savedResult: any; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
   const [home, setHome] = useState(savedResult?.home ?? '');
   const [away, setAway] = useState(savedResult?.away ?? '');
 

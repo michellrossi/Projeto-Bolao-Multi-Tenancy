@@ -149,9 +149,13 @@ export default function LeaguesPage() {
       // Auto-select the newly created league
       setLeague(newLeague.id);
       navigate('/palpites');
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error creating league:", err);
-      setError('Erro ao criar a liga. Tente novamente.');
+      if (err.message?.includes('LEAGUE_LIMIT')) {
+        setError('Você atingiu o limite de bolões do seu plano.');
+      } else {
+        setError('Erro ao criar a liga. Tente novamente.');
+      }
     } finally {
       setSubmitting(false);
     }
