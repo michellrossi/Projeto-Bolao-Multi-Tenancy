@@ -80,6 +80,7 @@ export default function CheckoutPage() {
           display_name: formData.name,
           photo_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
           max_participants_allowed: plan.participants,
+          max_leagues_allowed: plan.name === 'Bronze' ? 1 : 999,
           has_license: true,
           approved: true,
           plan_type: plan.name
@@ -195,7 +196,7 @@ export default function CheckoutPage() {
                 <CheckCircle2 size={14} className="text-primary" /> {plan.name === 'Bronze' ? '1 Bolão ativo' : 'Bolões ilimitados'}
               </li>
               <li className="flex items-center gap-3 text-xs font-medium text-white/60">
-                <CheckCircle2 size={14} className="text-primary" /> Acesso vitalício aos dados
+                <CheckCircle2 size={14} className="text-primary" /> {plan.name === 'Ouro' ? 'Acesso vitalício' : 'Acesso anual'}
               </li>
             </ul>
           </div>

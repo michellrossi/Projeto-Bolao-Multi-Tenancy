@@ -21,7 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   isApproved: false,
   hasLicense: false,
   maxLeaguesAllowed: 1, // Bronze default
-  maxParticipantsAllowed: 10, // Bronze default
+  maxParticipantsAllowed: 15, // Bronze default
   currentLeagueId: null,
   setLeagueId: () => { }
 });
@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isApproved, setIsApproved] = useState(false);
   const [hasLicense, setHasLicense] = useState(false);
   const [maxLeaguesAllowed, setMaxLeaguesAllowed] = useState(1);
-  const [maxParticipantsAllowed, setMaxParticipantsAllowed] = useState(10);
+  const [maxParticipantsAllowed, setMaxParticipantsAllowed] = useState(15);
   const [loading, setLoading] = useState(true);
   const [currentLeagueId, setCurrentLeagueId] = useState<string | null>(localStorage.getItem('currentLeagueId'));
 
@@ -97,12 +97,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setIsApproved(newUser?.approved === true);
             setHasLicense(newUser?.has_license === true);
             setMaxLeaguesAllowed(newUser?.max_leagues_allowed || 1);
-            setMaxParticipantsAllowed(newUser?.max_participants_allowed || 10);
+            setMaxParticipantsAllowed(newUser?.max_participants_allowed || 15);
           } else {
             setIsApproved(userData?.approved === true);
             setHasLicense(userData?.has_license === true);
             setMaxLeaguesAllowed(userData?.max_leagues_allowed || 1);
-            setMaxParticipantsAllowed(userData?.max_participants_allowed || 10);
+            setMaxParticipantsAllowed(userData?.max_participants_allowed || 15);
           }
         }
       } else {

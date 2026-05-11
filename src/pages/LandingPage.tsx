@@ -8,25 +8,25 @@ export default function LandingPage() {
   const plans = [
     {
       name: "Bronze",
-      price: "29",
-      participants: 10,
-      features: ["Até 10 participantes", "1 Bolão ativo", "Ranking em tempo real", "Suporte via WhatsApp"],
-      popular: false,
+      price: "47",
+      participants: 15,
+      features: ["Até 15 participantes", "1 bolão ativo", "Ranking em tempo real", "Suporte via WhatsApp"],
+      popular: true,
       color: "from-orange-500/20 to-orange-500/5"
     },
     {
       name: "Prata",
-      price: "67",
-      participants: 30,
-      features: ["Até 30 participantes", "Bolões ilimitados", "Personalização básica", "Suporte prioritário", "Ranking em tempo real"],
-      popular: true,
+      price: "97",
+      participants: 50,
+      features: ["Até 50 participantes", "Bolões ilimitados", "Nome do bolão personalizado", "Histórico de palpites", "Suporte prioritário"],
+      popular: false,
       color: "from-primary/20 to-primary/5"
     },
     {
       name: "Ouro",
-      price: "197",
+      price: "147",
       participants: 100,
-      features: ["Até 100 participantes", "Sua Logo no Header", "Sem marca do app", "Bolões ilimitados", "Gestão de prêmios"],
+      features: ["Até 100 participantes", "Bolões ilimitados", "Sua logo no header", "Sem marca d'água", "Gestão de premiação", "Acesso vitalício"],
       popular: false,
       color: "from-yellow-500/20 to-yellow-500/5"
     }
