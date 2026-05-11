@@ -28,10 +28,15 @@ export function useLeagueMembers(leagueId: string | null) {
       if (league) setLeagueData(league);
 
       // Membros: join league_members → users (filtrado por league_id)
-      const { data: membersRaw } = await supabase
+      // FIX #5: Selecionando apenas os campos públicos para não vazar dados de planos e aprovação
+      const { data: membersRaw, error } = await supabase
         .from('league_members')
-        .select('users(*)')
+        .select('users(id, display_name, photo_url)')
         .eq('league_id', leagueId);
+
+      if (error) {
+        console.error('Falha ao carregar membros', error);
+      }
 
       if (membersRaw) {
         const userList = membersRaw
@@ -41,6 +46,8 @@ export function useLeagueMembers(leagueId: string | null) {
       }
     } catch (err) {
       console.error('useLeagueMembers — fetch error:', err);
+      // Aqui idealmente usaríamos um toast
+      // alert('Não foi possível carregar os membros da liga.');
     } finally {
       setLoading(false);
     }

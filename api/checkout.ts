@@ -49,7 +49,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       value: parseFloat(plan.price),
       dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
       description: `Assinatura Plano ${plan.name} - Bolão Multi Tenancy`,
-      externalReference: `USER_${userId}`,
+      // FIX #7: Adiciona o nome do plano na externalReference para o Webhook não depender apenas do valor
+      externalReference: `USER_${userId}_PLAN_${plan.name}`,
       creditCard: {
         holderName: name,
         number: creditCard.number.replace(/\s/g, ''),

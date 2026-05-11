@@ -46,7 +46,7 @@ export function LoginPage() {
         }
       });
       if (error) throw error;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Login error:', err);
       setError("Não foi possível iniciar o login com Google.");
     }
@@ -84,10 +84,11 @@ export function LoginPage() {
         if (error) throw error;
         navigate('/palpites');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Auth error:", err);
-      setError(err.message === 'Invalid login credentials' ? 'Credenciais inválidas.' : 
-             err.message === 'User already registered' ? 'E-mail já cadastrado.' : 
+      const msg = err instanceof Error ? err.message : '';
+      setError(msg === 'Invalid login credentials' ? 'Credenciais inválidas.' : 
+             msg === 'User already registered' ? 'E-mail já cadastrado.' : 
              'Erro ao autenticar. Verifique seus dados.');
     } finally {
       setLoading(false);

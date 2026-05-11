@@ -26,7 +26,7 @@ export default function GroupsPage() {
     const fetchResults = async () => {
       const { data } = await supabase.from('results').select('*');
       if (data) {
-        const resMap: any = {};
+        const resMap: Record<string, { home: number; away: number }> = {};
         data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score });
         setResults(resMap);
       }

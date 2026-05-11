@@ -15,7 +15,7 @@ export default function TablePage() {
     const fetchResults = async () => {
       const { data } = await supabase.from('results').select('*');
       if (data) {
-        const resMap: any = {};
+        const resMap: Record<string, { home: number; away: number }> = {};
         data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score });
         setResults(resMap);
       }
@@ -31,7 +31,7 @@ export default function TablePage() {
     };
   }, []);
 
-  const handleSaveResult = async (matchId: string, home: any, away: any) => {
+  const handleSaveResult = async (matchId: string, home: number | string, away: number | string) => {
     if (home === '' || away === '') return;
     try {
       const { error } = await supabase.from('results').upsert({
@@ -122,7 +122,7 @@ export default function TablePage() {
   );
 }
 
-function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: any) {
+function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: { match: any; isAdmin: boolean; savedResult: any; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
   const [home, setHome] = useState(savedResult?.home ?? '');
   const [away, setAway] = useState(savedResult?.away ?? '');
 
@@ -197,7 +197,7 @@ function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: any) {
   );
 }
 
-function ResultRow({ match, isAdmin, savedResult, onSave, onReset }: any) {
+function ResultRow({ match, isAdmin, savedResult, onSave, onReset }: { match: any; isAdmin: boolean; savedResult: any; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
   const [home, setHome] = useState(savedResult?.home ?? '');
   const [away, setAway] = useState(savedResult?.away ?? '');
 

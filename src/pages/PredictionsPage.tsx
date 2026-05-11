@@ -13,14 +13,14 @@ const TABS = [...WORLD_CUP_2026_ROUNDS.map(r => r.name), "Mata-Mata"];
 
 export default function PredictionsPage() {
   const { user, isApproved } = useAuth();
-  const currentLeagueId = localStorage.getItem('currentLeagueId');
+  const { currentLeagueId } = useLeague();
   const [activeTab, setActiveTab] = useState("1ª Rodada");
   const [predictions, setPredictions] = useState<Record<string, { home: number; away: number }>>({});
   const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
   const [loading, setLoading] = useState(true);
   const activeRound = WORLD_CUP_2026_ROUNDS.find(r => r.name === activeTab);
   const standings = getGroupStandings(
-    Object.entries(results).reduce((acc: any, [id, res]) => {
+    Object.entries(results).reduce((acc: Record<string, { homeScore: number; awayScore: number }>, [id, res]) => {
       acc[id] = { homeScore: res.home, awayScore: res.away };
       return acc;
     }, {})
@@ -33,7 +33,7 @@ export default function PredictionsPage() {
     const fetchResults = async () => {
       const { data } = await supabase.from('results').select('*');
       if (data) {
-        const resMap: any = {};
+        const resMap: Record<string, { home: number; away: number }> = {};
         data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score });
         setResults(resMap);
       }
@@ -48,7 +48,7 @@ export default function PredictionsPage() {
         .eq('user_id', user.id);
 
       if (data) {
-        const predMap: any = {};
+        const predMap: Record<string, { home: number; away: number }> = {};
         data.forEach(p => predMap[p.match_id] = { home: p.home_score, away: p.away_score });
         setPredictions(predMap);
       }
@@ -197,7 +197,7 @@ export default function PredictionsPage() {
   );
 }
 
-function MatchCard({ match, prediction, result, onSave }: any) {
+function MatchCard({ match, prediction, result, onSave }: { match: any; prediction: any; result: any; onSave: (id: string, home: number, away: number) => void }) {
   const [home, setHome] = useState(prediction?.home ?? '');
   const [away, setAway] = useState(prediction?.away ?? '');
   const locked = isMatchLocked(match.date, match.time);

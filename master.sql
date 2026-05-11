@@ -167,6 +167,15 @@ drop policy if exists "Users can delete own predictions" on predictions;
 create policy "Users can delete own predictions" on predictions
   for delete using (auth.uid() = user_id);
 
+-- FIX #8: Políticas para purchases e purchase_codes (histórico e segurança do asaas)
+alter table purchases enable row level security;
+drop policy if exists "Users can view own purchases" on purchases;
+create policy "Users can view own purchases" on purchases for select using (auth.uid() = user_id);
+
+alter table purchase_codes enable row level security;
+drop policy if exists "Users can view own purchase codes" on purchase_codes;
+create policy "Users can view own purchase codes" on purchase_codes for select using (auth.uid() = used_by);
+
 -- 7. Trigger de Proteção de Capacidade de Participantes
 create or replace function check_league_capacity()
 returns trigger language plpgsql as $$

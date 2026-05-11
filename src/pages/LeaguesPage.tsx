@@ -9,9 +9,21 @@ import { useNavigate } from 'react-router-dom';
 interface League {
   id: string;
   name: string;
-  ownerId: string;
-  inviteCode: string;
-  members: string[];
+  owner_id: string;
+  invite_code: string;
+  members_count: number;
+  is_owner: boolean;
+}
+
+interface LeagueResponse {
+  league_id: string;
+  leagues: {
+    id: string;
+    name: string;
+    owner_id: string;
+    invite_code: string;
+    members: { count: number }[];
+  };
 }
 
 export default function LeaguesPage() {
@@ -19,9 +31,9 @@ export default function LeaguesPage() {
     user, 
     hasLicense, 
     maxLeaguesAllowed, 
-    maxParticipantsAllowed,
-    setLeagueId 
+    maxParticipantsAllowed 
   } = useAuth();
+  const { setLeague } = useLeague();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [ownedLeaguesCount, setOwnedLeaguesCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -56,7 +68,7 @@ export default function LeaguesPage() {
 
       if (leaguesError) throw leaguesError;
 
-      const leagueList: League[] = (userLeagues || []).map((ul: any) => ({
+      const leagueList: League[] = ((userLeagues as unknown) as LeagueResponse[] || []).map(ul => ({
         id: ul.leagues.id,
         name: ul.leagues.name,
         owner_id: ul.leagues.owner_id,
@@ -135,7 +147,7 @@ export default function LeaguesPage() {
       setLeagueName('');
 
       // Auto-select the newly created league
-      setLeagueId(newLeague.id);
+      setLeague(newLeague.id);
       navigate('/palpites');
     } catch (err) {
       console.error("Error creating league:", err);
@@ -222,7 +234,7 @@ export default function LeaguesPage() {
       setInviteCode('');
 
       // Auto-select the joined league
-      setLeagueId(league.id);
+      setLeague(league.id);
       navigate('/palpites');
     } catch (err) {
       console.error("Error joining league:", err);
@@ -233,7 +245,7 @@ export default function LeaguesPage() {
   };
 
   const selectLeague = (leagueId: string) => {
-    localStorage.setItem('currentLeagueId', leagueId);
+    setLeague(leagueId);
     navigate('/app/palpites');
   };
 

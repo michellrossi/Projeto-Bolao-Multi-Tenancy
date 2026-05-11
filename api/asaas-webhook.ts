@@ -24,29 +24,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Monitoramos apenas os eventos de confirmação de pagamento
   if (event === 'PAYMENT_CONFIRMED' || event === 'PAYMENT_RECEIVED') {
     // Pegamos o ID do usuário que enviamos no externalReference
-    // Formato esperado: USER_uuid-do-usuario
-    const userId = payment.externalReference?.replace('USER_', '');
+    // Formato esperado: USER_uuid-do-usuario_PLAN_nome
+    const parts = payment.externalReference?.split('_PLAN_');
+    const userIdRaw = parts?.[0];
+    const userId = userIdRaw?.replace('USER_', '');
+    const planFromRef = parts?.[1];
 
     if (!userId) {
       console.error('Webhook: externalReference inválido', payment.externalReference);
       return res.status(400).json({ error: 'Missing userId' });
     }
 
-    // Lógica de limites baseada no valor pago (Precificação 2026)
+    // FIX #7: Lógica de limites baseada no nome do plano enviado na referência
     let maxParticipants = 15; // Bronze (Padrão)
     let maxLeagues = 1;
-    let planName = 'Bronze';
+    let planName = planFromRef || 'Bronze';
 
-    const value = parseFloat(payment.value);
-
-    if (value >= 140) { // Ouro (R$ 147)
+    if (planName === 'Ouro') {
       maxParticipants = 100;
       maxLeagues = 999;
-      planName = 'Ouro';
-    } else if (value >= 90) { // Prata (R$ 97)
+    } else if (planName === 'Prata') {
       maxParticipants = 50;
       maxLeagues = 999;
-      planName = 'Prata';
     }
 
     try {

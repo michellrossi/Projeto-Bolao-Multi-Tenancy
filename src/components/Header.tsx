@@ -86,7 +86,7 @@ export function Header() {
 
     const checkUpcomingMatches = () => {
       const now = new Date();
-      const upcoming: any[] = [];
+      const upcoming: { id: string; date: string; time: string }[] = [];
       
       WORLD_CUP_2026_ROUNDS.flatMap(r => r.matches).forEach(match => {
         const [day, month, year] = match.date.split('/').map(Number);
