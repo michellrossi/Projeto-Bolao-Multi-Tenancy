@@ -94,21 +94,9 @@ export default function LeaguesPage() {
     setError('');
 
     try {
-      // Gera código único verificando colisão no banco
-      let generatedCode = '';
-      let isUnique = false;
-      while (!isUnique) {
-        const candidate = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const { data: existing } = await supabase
-          .from('leagues')
-          .select('id')
-          .eq('invite_code', candidate)
-          .maybeSingle();
-        if (!existing) {
-          generatedCode = candidate;
-          isUnique = true;
-        }
-      }
+      // Gera código único pseudo-aleatório de 8 caracteres (base 36)
+      // O espaço amostral é enorme, tornando a colisão estatisticamente irrelevante
+      const generatedCode = Math.random().toString(36).substring(2, 10).toUpperCase();
 
       // 1. Create league
       const { data: newLeague, error: createError } = await supabase

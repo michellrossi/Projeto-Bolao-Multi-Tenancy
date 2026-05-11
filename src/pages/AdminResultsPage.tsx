@@ -75,6 +75,10 @@ export default function AdminResultsPage() {
     const a = parseInt(editAway);
     if (isNaN(h) || isNaN(a) || h < 0 || a < 0) return;
 
+    if (!window.confirm('Confirma a publicação oficial deste resultado para toda a plataforma? Isso afetará os rankings.')) {
+      return;
+    }
+
     setSaving(matchId);
     try {
       const { error } = await supabase
@@ -269,7 +273,7 @@ export default function AdminResultsPage() {
                                   disabled={isSaving}
                                   className="px-4 py-2 bg-primary text-dark font-black text-xs rounded-xl uppercase tracking-widest hover:scale-105 transition-all disabled:opacity-50 flex items-center gap-1"
                                 >
-                                  {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'Salvar'}
+                                  {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'Publicar'}
                                 </button>
                                 <button
                                   onClick={cancelEdit}

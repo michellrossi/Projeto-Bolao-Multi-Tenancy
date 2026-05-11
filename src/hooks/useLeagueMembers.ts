@@ -32,7 +32,8 @@ export function useLeagueMembers(leagueId: string | null) {
       const { data: membersRaw, error } = await supabase
         .from('league_members')
         .select('users(id, display_name, photo_url)')
-        .eq('league_id', leagueId);
+        .eq('league_id', leagueId)
+        .range(0, 99); // Proteção contra payload excessivo
 
       if (error) {
         console.error('Falha ao carregar membros', error);

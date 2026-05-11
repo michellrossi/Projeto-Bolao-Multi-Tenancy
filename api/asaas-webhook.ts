@@ -63,6 +63,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (error) throw error;
 
       console.log(`Sucesso: Plano ${planName} ativado para o usuário ${userId}`);
+
+      // Disparo não-bloqueante do e-mail de boas-vindas
+      fetch(`${process.env.APP_URL || 'https://projeto-bolao-multi-tenancy.vercel.app'}/api/welcome-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: payment.customerName || 'Usuário',
+          email: payment.customerEmail || 'usuario@bolao2026.com',
+          plan: { 
+            name: planName, 
+            price: payment.value, 
+            participants: maxParticipants 
+          },
+          code: Math.random().toString(36).substring(2, 8).toUpperCase()
+        }),
+      }).catch(err => console.warn('Falha silenciosa ao enviar welcome-email:', err));
+
       return res.status(200).send('OK');
     } catch (err) {
       console.error('Webhook: Erro ao atualizar banco:', err);

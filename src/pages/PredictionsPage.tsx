@@ -31,7 +31,7 @@ export default function PredictionsPage() {
 
     // Fetch results
     const fetchResults = async () => {
-      const { data } = await supabase.from('results').select('*');
+      const { data } = await supabase.from('results').select('*').range(0, 199);
       if (data) {
         const resMap: Record<string, { home: number; away: number }> = {};
         data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score });
@@ -45,7 +45,8 @@ export default function PredictionsPage() {
         .from('predictions')
         .select('*')
         .eq('league_id', currentLeagueId)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .range(0, 199); // Limite de payload
 
       if (data) {
         const predMap: Record<string, { home: number; away: number }> = {};
