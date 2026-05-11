@@ -15,6 +15,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import ProfilePage from './pages/ProfilePage';
 import TermosPage from './pages/TermosPage';
 import PrivacidadePage from './pages/PrivacidadePage';
+import AdminResultsPage from './pages/AdminResultsPage';
 import { AuthProvider } from './hooks/useAuth';
 import { LeagueProvider } from './hooks/useLeague';
 import './index.css';
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
       { path: '/app/regras', element: <RulesPage /> },
       { path: '/app/ligas', element: <LeaguesPage /> },
       { path: '/app/perfil', element: <ProfilePage /> },
+      { path: '/app/admin-resultados', element: <AdminResultsPage /> },
     ],
   },
 ]);

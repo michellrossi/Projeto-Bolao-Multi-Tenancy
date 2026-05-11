@@ -104,7 +104,8 @@ export default function LeaguesPage() {
         .insert({
           name: leagueName,
           owner_id: user.id,
-          invite_code: generatedCode
+          invite_code: generatedCode,
+          max_participants: maxParticipantsAllowed
         })
         .select()
         .single();
@@ -152,10 +153,10 @@ export default function LeaguesPage() {
     setError('');
 
     try {
-      // 1. Find the league by invite code
+      // 1. Find the league by invite code (inclui max_participants)
       const { data: league, error: findError } = await supabase
         .from('leagues')
-        .select('id, name, owner_id, invite_code')
+        .select('id, name, owner_id, invite_code, max_participants')
         .eq('invite_code', inviteCode.trim().toUpperCase())
         .single();
 
@@ -163,6 +164,20 @@ export default function LeaguesPage() {
         setError('Código de convite inválido.');
         setSubmitting(false);
         return;
+      }
+
+      // 2. Verifica capacidade máxima (validação no cliente — trigger no banco garante atomicidade)
+      if (league.max_participants) {
+        const { count: currentCount } = await supabase
+          .from('league_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('league_id', league.id);
+
+        if ((currentCount ?? 0) >= league.max_participants) {
+          setError(`Esta liga já atingiu o limite de ${league.max_participants} participantes.`);
+          setSubmitting(false);
+          return;
+        }
       }
 
       // 2. Check if already a member

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trophy, CalendarDays, LayoutGrid, BarChart3, Users } from 'lucide-react';
+import { Trophy, CalendarDays, LayoutGrid, BarChart3, Users, ClipboardList } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
@@ -42,6 +42,9 @@ export function NavBar() {
 
   if ((isAdmin || isOwner) && hasValidLeague) {
     links.push({ name: 'Participantes', icon: Users, path: '/app/usuarios' });
+  }
+  if (isAdmin) {
+    links.push({ name: 'Resultados', icon: ClipboardList, path: '/app/admin-resultados' });
   }
 
   return (
