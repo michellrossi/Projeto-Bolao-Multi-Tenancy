@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ShieldCheck, Lock, CreditCard, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 
 export default function CheckoutPage() {
   const location = useLocation();
@@ -29,44 +27,64 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      // 1. Create User
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = userCredential.user;
+      // 1. Create User in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+          }
+        }
+      });
+
+      if (authError) throw authError;
+      const user = authData.user;
+      if (!user) throw new Error("Erro ao criar usuário.");
 
       // 2. Generate Code
       const code = Math.random().toString(36).substring(2, 10).toUpperCase();
       
-      // 3. Save User Data with License Info
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        email: user.email,
-        displayName: formData.name,
-        photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
-        createdAt: new Date().toISOString(),
-        maxParticipantsAllowed: plan.participants,
-        hasLicense: true,
-        approved: true,
-        planType: plan.name
-      });
+      // 3. Update User Data with License Info in Supabase 'users' table
+      const { error: userError } = await supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          display_name: formData.name,
+          photo_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+          max_participants_allowed: plan.participants,
+          has_license: true,
+          approved: true,
+          plan_type: plan.name
+        });
+
+      if (userError) throw userError;
 
       // 4. Save Purchase Record
-      await addDoc(collection(db, 'purchases'), {
-        userId: user.uid,
-        plan: plan.name,
-        price: plan.price,
-        code: code,
-        date: new Date().toISOString()
-      });
+      const { error: purchaseError } = await supabase
+        .from('purchases')
+        .insert({
+          user_id: user.id,
+          plan: plan.name,
+          price: plan.price,
+          code: code
+        });
 
-      // 5. Save License Code for reference/validation
-      await setDoc(doc(db, 'purchase_codes', code), {
-        code: code,
-        maxParticipants: plan.participants,
-        usedBy: user.uid,
-        usedAt: new Date().toISOString(),
-        planType: plan.name,
-        status: 'used'
-      });
+      if (purchaseError) throw purchaseError;
+
+      // 5. Save License Code
+      const { error: codeError } = await supabase
+        .from('purchase_codes')
+        .insert({
+          code: code,
+          max_participants: plan.participants,
+          used_by: user.id,
+          plan_type: plan.name,
+          status: 'used'
+        });
+
+      if (codeError) throw codeError;
 
       setGeneratedCode(code);
       setSuccess(true);

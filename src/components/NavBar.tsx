@@ -4,29 +4,31 @@ import { NavLink } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 
+import { supabase } from '../lib/supabase';
+
 export function NavBar() {
   const { user, isAdmin, currentLeagueId } = useAuth();
   const [isOwner, setIsOwner] = useState(false);
-  const hasValidLeague = currentLeagueId && currentLeagueId !== 'null' && currentLeagueId !== 'undefined';
+  const hasValidLeague = !!currentLeagueId && currentLeagueId !== 'null' && currentLeagueId !== 'undefined';
 
   useEffect(() => {
-    if (!user || !currentLeagueId) {
+    if (!user || !currentLeagueId || !hasValidLeague) {
       setIsOwner(false);
       return;
     }
 
-    import('../lib/firebase').then(({ db }) => {
-      import('firebase/firestore').then(({ doc, getDoc }) => {
-        getDoc(doc(db, 'leagues', currentLeagueId)).then(snap => {
-          if (snap.exists() && snap.data().ownerId === user.uid) {
-            setIsOwner(true);
-          } else {
-            setIsOwner(false);
-          }
-        });
-      });
-    });
-  }, [user, currentLeagueId]);
+    const checkOwner = async () => {
+      const { data } = await supabase
+        .from('leagues')
+        .select('owner_id')
+        .eq('id', currentLeagueId)
+        .single();
+      
+      setIsOwner(data?.owner_id === user.id);
+    };
+
+    checkOwner();
+  }, [user, currentLeagueId, hasValidLeague]);
 
   const links = hasValidLeague ? [
     { name: 'Palpites', icon: CalendarDays, path: '/app/palpites' },

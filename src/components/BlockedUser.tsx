@@ -1,10 +1,9 @@
 import { ShieldX, MessageCircle } from 'lucide-react';
-import { auth } from '../lib/firebase';
-import { signOut } from 'firebase/auth';
+import { supabase } from '../lib/supabase';
 
 export function BlockedUser() {
-  const handleSignOut = () => {
-    signOut(auth);
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
     localStorage.clear();
     window.location.href = '/login';
   };

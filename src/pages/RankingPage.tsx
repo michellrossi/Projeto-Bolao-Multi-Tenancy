@@ -24,7 +24,7 @@ export default function RankingPage() {
   const [leagueName, setLeagueName] = useState('');
 
   useEffect(() => {
-    const hasValidLeague = currentLeagueId && currentLeagueId !== 'null' && currentLeagueId !== 'undefined';
+    const hasValidLeague = !!currentLeagueId && currentLeagueId !== 'null' && currentLeagueId !== 'undefined';
     if (!hasValidLeague) {
       setLoading(false);
       return;
@@ -37,79 +37,83 @@ export default function RankingPage() {
         const resultsMap: any = {};
         resultsData?.forEach(r => resultsMap[r.match_id] = { home: r.home_score, away: r.away_score });
 
-        // 2. Fetch League and Data
-        try {
-          const leagueDoc = await getDoc(doc(db, 'leagues', currentLeagueId));
-          if (!leagueDoc.exists()) return;
+        // 2. Fetch League Name
+        const { data: leagueData } = await supabase
+          .from('leagues')
+          .select('name')
+          .eq('id', currentLeagueId)
+          .single();
+        if (leagueData) setLeagueName(leagueData.name);
 
-          const leagueData = leagueDoc.data();
-          setLeagueName(leagueData.name);
-          const members: string[] = leagueData.members || [];
+        // 3. Fetch Members and their Profiles
+        const { data: membersData } = await supabase
+          .from('league_members')
+          .select('user_id, users(id, email, display_name, photo_url)')
+          .eq('league_id', currentLeagueId);
 
-          const [predsSnapshot, usersSnapshot] = await Promise.all([
-            getDocs(collection(db, 'leagues', currentLeagueId, 'predictions')),
-            getDocs(collection(db, 'users'))
-          ]);
+        // 4. Fetch All Predictions for this League
+        const { data: predsData } = await supabase
+          .from('predictions')
+          .select('*')
+          .eq('league_id', currentLeagueId);
 
-          const allPredictions: any = {};
-          predsSnapshot.forEach(doc => allPredictions[doc.id] = doc.data().matches || {});
-
-          const rankingList: UserRanking[] = [];
-
-          usersSnapshot.forEach((userDoc) => {
-            const userData = userDoc.data();
-            const userId = userDoc.id;
-
-            // Only show members of this league
-            if (!members.includes(userId)) return;
-
-            const userPreds = allPredictions[userId] || {};
-
-            let totalPoints = 0;
-            Object.entries(userPreds).forEach(([matchId, pred]: any) => {
-              const result = resultsMap[matchId];
-              if (result) {
-                totalPoints += calculatePoints(
-                  { homeScore: Number(pred.home), awayScore: Number(pred.away) },
-                  { homeScore: result.home, awayScore: result.away }
-                );
-              }
-            });
-
-            return {
-              id: userId,
-              name: profile.display_name || 'Competidor',
-              photo: profile.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
-              points: totalPoints,
-              trend: 'stable',
-              trendValue: 0
-            });
+        const allPredictions: any = {};
+        predsData?.forEach(p => {
+          if (!allPredictions[p.user_id]) allPredictions[p.user_id] = {};
+          allPredictions[p.user_id][p.match_id] = { home: p.home_score, away: p.away_score };
         });
 
-  // Sort by points (DESC) then by name (ASC) as tie-breaker
-  rankingList.sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    return a.name.localeCompare(b.name);
-  });
+        // 5. Calculate Rankings
+        const rankingList: UserRanking[] = (membersData || []).map((member: any) => {
+          const profile = member.users;
+          const userId = profile.id;
+          const userPreds = allPredictions[userId] || {};
 
-  setRankings(rankingList);
-} catch (error) {
-  console.error("Error fetching rankings:", error);
-} finally {
-  setLoading(false);
-}
+          let totalPoints = 0;
+          Object.entries(userPreds).forEach(([matchId, pred]: any) => {
+            const result = resultsMap[matchId];
+            if (result) {
+              totalPoints += calculatePoints(
+                { homeScore: Number(pred.home), awayScore: Number(pred.away) },
+                { homeScore: result.home, awayScore: result.away }
+              );
+            }
+          });
+
+          return {
+            id: userId,
+            name: profile.display_name || 'Competidor',
+            photo: profile.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
+            points: totalPoints,
+            trend: 'stable',
+            trendValue: 0
+          };
+        });
+
+        // Sort by points (DESC) then by name (ASC) as tie-breaker
+        rankingList.sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return a.name.localeCompare(b.name);
+        });
+
+        setRankings(rankingList);
+      } catch (error) {
+        console.error("Error fetching rankings:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-fetchData();
+    fetchData();
 
-// Setup real-time listeners
-const resultsSub = supabase.channel('ranking_results').on('postgres_changes', { event: '*', table: 'results' }, fetchData).subscribe();
-const predsSub = supabase.channel('ranking_preds').on('postgres_changes', { event: '*', table: 'predictions', filter: `league_id=eq.${currentLeagueId}` }, fetchData).subscribe();
+    // Setup real-time listeners
+    const resultsSub = supabase.channel('ranking_results').on('postgres_changes', { event: '*', table: 'results' }, fetchData).subscribe();
+    const predsSub = supabase.channel('ranking_preds').on('postgres_changes', { event: '*', table: 'predictions', filter: `league_id=eq.${currentLeagueId}` }, fetchData).subscribe();
 
-return () => {
-  resultsSub.unsubscribe();
-  predsSub.unsubscribe();
-};
+    return () => {
+      resultsSub.unsubscribe();
+      predsSub.unsubscribe();
+    };
   }, [currentUser, currentLeagueId]);
 
 if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;

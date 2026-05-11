@@ -15,7 +15,13 @@ interface League {
 }
 
 export default function LeaguesPage() {
-  const { user } = useAuth();
+  const { 
+    user, 
+    hasLicense, 
+    maxLeaguesAllowed, 
+    maxParticipantsAllowed,
+    setLeagueId 
+  } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [ownedLeaguesCount, setOwnedLeaguesCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -34,13 +40,33 @@ export default function LeaguesPage() {
 
   const fetchLeagues = async () => {
     try {
-      const q = query(collection(db, 'leagues'), where('members', 'array-contains', user?.uid));
-      const querySnapshot = await getDocs(q);
-      const leagueList: League[] = [];
-      querySnapshot.forEach((doc) => {
-        leagueList.push({ id: doc.id, ...doc.data() } as League);
-      });
+      const { data: userLeagues, error: leaguesError } = await supabase
+        .from('league_members')
+        .select(`
+          league_id,
+          leagues (
+            id,
+            name,
+            owner_id,
+            invite_code,
+            members: league_members(count)
+          )
+        `)
+        .eq('user_id', user?.id);
+
+      if (leaguesError) throw leaguesError;
+
+      const leagueList: League[] = (userLeagues || []).map((ul: any) => ({
+        id: ul.leagues.id,
+        name: ul.leagues.name,
+        owner_id: ul.leagues.owner_id,
+        invite_code: ul.leagues.invite_code,
+        members_count: ul.leagues.members[0].count,
+        is_owner: ul.leagues.owner_id === user?.id
+      }));
+
       setLeagues(leagueList);
+      setOwnedLeaguesCount(leagueList.filter(l => l.is_owner).length);
     } catch (err) {
       console.error("Error fetching leagues:", err);
     } finally {
@@ -58,15 +84,28 @@ export default function LeaguesPage() {
     try {
       const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-      const leagueData = {
-        name: leagueName,
-        ownerId: user.uid,
-        inviteCode: generatedCode,
-        members: [user.uid],
-        createdAt: new Date().toISOString(),
-      };
+      // 1. Create league
+      const { data: newLeague, error: createError } = await supabase
+        .from('leagues')
+        .insert({
+          name: leagueName,
+          owner_id: user.id,
+          invite_code: generatedCode
+        })
+        .select()
+        .single();
 
-      const docRef = await addDoc(collection(db, 'leagues'), leagueData);
+      if (createError) throw createError;
+
+      // 2. Add owner as member
+      const { error: memberError } = await supabase
+        .from('league_members')
+        .insert({
+          league_id: newLeague.id,
+          user_id: user.id
+        });
+
+      if (memberError) throw memberError;
 
       setLeagues([...leagues, {
         id: newLeague.id,
@@ -76,11 +115,12 @@ export default function LeaguesPage() {
         members_count: 1,
         is_owner: true
       }]);
+      setOwnedLeaguesCount(prev => prev + 1);
       setShowCreateModal(false);
       setLeagueName('');
 
       // Auto-select the newly created league
-      localStorage.setItem('currentLeagueId', docRef.id);
+      setLeagueId(newLeague.id);
       navigate('/palpites');
     } catch (err) {
       console.error("Error creating league:", err);
@@ -125,12 +165,6 @@ export default function LeaguesPage() {
         return;
       }
 
-      if (leagueData.members.length >= (leagueData.maxParticipants || 10)) {
-        setError('Esta liga atingiu o limite de participantes do plano atual.');
-        setSubmitting(false);
-        return;
-      }
-
       // 3. Add member
       const { error: joinError } = await supabase
         .from('league_members')
@@ -148,7 +182,10 @@ export default function LeaguesPage() {
         .eq('league_id', league.id);
 
       setLeagues([...leagues, {
-        ...league,
+        id: league.id,
+        name: league.name,
+        owner_id: league.owner_id,
+        invite_code: league.invite_code,
         members_count: count || 0,
         is_owner: league.owner_id === user.id
       }]);
@@ -156,7 +193,7 @@ export default function LeaguesPage() {
       setInviteCode('');
 
       // Auto-select the joined league
-      localStorage.setItem('currentLeagueId', leagueDoc.id);
+      setLeagueId(league.id);
       navigate('/palpites');
     } catch (err) {
       console.error("Error joining league:", err);
@@ -255,7 +292,7 @@ export default function LeaguesPage() {
                     <h3 className="font-black text-lg text-white uppercase">{league.name}</h3>
                     <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-white/40">
                       <span className="flex items-center gap-1">
-                        <Users size={12} /> {league.members.length} membros
+                        <Users size={12} /> {league.members_count} membros
                       </span>
                       {league.is_owner && (
                         <span className="flex items-center gap-1 text-primary/60">

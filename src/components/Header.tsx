@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Bell, LogOut, Clock, User as UserIcon, X, CheckCircle2, ChevronDown, ScrollText, Users, Trophy } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
-import { signOut } from 'firebase/auth';
+import { supabase } from '../lib/supabase';
 import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 
 const AVATARS = [
@@ -38,27 +36,53 @@ export function Header() {
     if (!user) return;
     
     // Buscar nome e logo da liga atual
-    if (currentLeagueId) {
-      const unsubLeague = onSnapshot(doc(db, 'leagues', currentLeagueId), (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
+    const fetchLeagueData = async () => {
+      if (currentLeagueId) {
+        const { data } = await supabase
+          .from('leagues')
+          .select('name, custom_logo')
+          .eq('id', currentLeagueId)
+          .single();
+        
+        if (data) {
           setCurrentLeagueName(data.name);
-          setCurrentLeagueLogo(data.customLogo || '');
+          setCurrentLeagueLogo(data.custom_logo || '');
         }
-      });
-      return () => unsubLeague();
-    } else {
-      setCurrentLeagueName('');
-      setCurrentLeagueLogo('');
+      } else {
+        setCurrentLeagueName('');
+        setCurrentLeagueLogo('');
+      }
+    };
+
+    fetchLeagueData();
+
+    if (currentLeagueId) {
+      const sub = supabase
+        .channel(`header_league_${currentLeagueId}`)
+        .on('postgres_changes', { event: '*', table: 'leagues', filter: `id=eq.${currentLeagueId}` }, fetchLeagueData)
+        .subscribe();
+      return () => { sub.unsubscribe(); };
     }
-  }, [currentLeagueId]);
+  }, [currentLeagueId, user]);
 
   useEffect(() => {
     if (!user) return;
     
-    const unsubUser = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-      if (doc.exists()) setUserData(doc.data());
-    });
+    const fetchUserData = async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (data) setUserData(data);
+    };
+
+    fetchUserData();
+
+    const sub = supabase
+      .channel(`header_user_${user.id}`)
+      .on('postgres_changes', { event: '*', table: 'users', filter: `id=eq.${user.id}` }, fetchUserData)
+      .subscribe();
 
     const checkUpcomingMatches = () => {
       const now = new Date();
@@ -88,18 +112,29 @@ export function Header() {
     const interval = setInterval(checkUpcomingMatches, 60000);
     return () => {
       clearInterval(interval);
-      unsubUser();
+      sub.unsubscribe();
     };
   }, [user]);
 
   const handleUpdateAvatar = async (avatarUrl: string) => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, 'users', user.uid), { photoURL: avatarUrl });
+      const { error } = await supabase
+        .from('users')
+        .update({ photo_url: avatarUrl })
+        .eq('id', user.id);
+      
+      if (error) throw error;
       setShowAvatarSelector(false);
     } catch (error) {
       console.error("Error updating avatar:", error);
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem('currentLeagueId');
+    navigate('/login');
   };
 
   return (
@@ -134,7 +169,7 @@ export function Header() {
             <div className="flex items-center gap-3 pr-2 mr-2 border-r border-white/10 h-10">
               <div className="text-right hidden sm:block">
                 <p className="text-[10px] font-black text-white uppercase tracking-tight truncate max-w-[120px]">
-                  {userData?.displayName || user.displayName}
+                  {userData?.display_name || user.user_metadata?.full_name || 'Competidor'}
                 </p>
                 <p className="text-[8px] font-bold text-primary uppercase tracking-widest">
                   {isAdmin ? 'Admin' : isApproved ? 'Competidor' : 'Pendente'}
@@ -142,7 +177,7 @@ export function Header() {
               </div>
               <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="relative group h-10 w-10 flex-shrink-0">
                 <img 
-                  src={userData?.photoURL || user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`} 
+                  src={userData?.photo_url || user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`} 
                   alt="Perfil" 
                   className="w-10 h-10 rounded-xl object-cover border-2 border-white/10 group-hover:border-primary/50 transition-all"
                 />
@@ -180,10 +215,7 @@ export function Header() {
                         <ScrollText size={14} /> Regras
                       </button>
                       <button 
-                        onClick={() => {
-                          signOut(auth);
-                          localStorage.removeItem('currentLeagueId');
-                        }}
+                        onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 text-[11px] font-black uppercase tracking-widest text-red-500 transition-all"
                       >
                         <LogOut size={14} /> Sair

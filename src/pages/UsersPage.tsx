@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../lib/firebase';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { UserCheck, UserX, ShieldCheck, Mail, Calendar, Search } from 'lucide-react';
 
@@ -26,36 +25,50 @@ export default function UsersPage() {
   useEffect(() => {
     if (!currentUser || !currentLeagueId) return;
 
-    const checkOwnership = async () => {
-      const lDoc = await getDoc(doc(db, 'leagues', currentLeagueId));
-      if (lDoc.exists()) {
-        const data = lDoc.data();
-        setLeagueData(data);
-        if (data.ownerId === currentUser.uid) {
-          setIsOwner(true);
+    const fetchData = async () => {
+      try {
+        // 1. Check League Ownership
+        const { data: league, error: lError } = await supabase
+          .from('leagues')
+          .select('*')
+          .eq('id', currentLeagueId)
+          .single();
+        
+        if (league) {
+          setLeagueData(league);
+          setIsOwner(league.owner_id === currentUser.id);
         }
+
+        // 2. Fetch Users (Members of this league)
+        // If global admin, maybe show all users? For now, let's stick to league members for simplicity
+        const { data: members, error: mError } = await supabase
+          .from('league_members')
+          .select('user_id, users(*)')
+          .eq('league_id', currentLeagueId);
+
+        if (members) {
+          const userList = members.map((m: any) => m.users as UserData);
+          setUsers(userList);
+        }
+      } catch (err) {
+        console.error("Error fetching users:", err);
+      } finally {
+        setLoading(false);
       }
     };
-    checkOwnership();
 
-    const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const data: UserData[] = [];
-      snapshot.forEach((doc) => {
-        const userData = doc.data() as UserData;
-        data.push(userData);
-      });
-      // Sort handling missing lastLogin
-      data.sort((a, b) => (b.lastLogin || '').localeCompare(a.lastLogin || ''));
-      setUsers(data);
-      setLoading(false);
+    fetchData();
+
+    const sub = supabase
+      .channel('users_page')
+      .on('postgres_changes', { event: '*', table: 'league_members', filter: `league_id=eq.${currentLeagueId}` }, fetchData)
+      .on('postgres_changes', { event: '*', table: 'users' }, fetchData)
+      .subscribe();
+
+    return () => {
+      sub.unsubscribe();
     };
-
-    fetchUsers();
-
-    const sub = supabase.channel('users_changes').on('postgres_changes', { event: '*', table: 'users' }, fetchUsers).subscribe();
-
-    return unsub;
-  }, [isAdmin]);
+  }, [currentUser, currentLeagueId, isAdmin]);
 
   const handleToggleApproval = async (id: string, currentStatus: boolean) => {
     try {
@@ -73,7 +86,7 @@ export default function UsersPage() {
   if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
 
   const filteredUsers = users.filter(u =>
-    u.displayName?.toLowerCase().includes(search.toLowerCase()) ||
+    u.display_name?.toLowerCase().includes(search.toLowerCase()) ||
     u.email?.toLowerCase().includes(search.toLowerCase())
   );
 
