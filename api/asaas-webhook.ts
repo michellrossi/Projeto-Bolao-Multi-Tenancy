@@ -24,15 +24,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Monitoramos apenas os eventos de confirmação de pagamento
   if (event === 'PAYMENT_CONFIRMED' || event === 'PAYMENT_RECEIVED') {
     // Pegamos o ID do usuário que enviamos no externalReference
-    // Formato esperado: USER_uuid-do-usuario_PLAN_nome
+    // Formato esperado: USER_uuid_PLAN_nome ou EMAIL_email_PLAN_nome
     const parts = payment.externalReference?.split('_PLAN_');
-    const userIdRaw = parts?.[0];
-    const userId = userIdRaw?.replace('USER_', '');
+    const refRaw = parts?.[0];
     const planFromRef = parts?.[1];
 
+    let userId = null;
+    if (refRaw?.startsWith('EMAIL_')) {
+      const email = refRaw.replace('EMAIL_', '');
+      const { data } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
+      if (data) userId = data.id;
+    } else {
+      userId = refRaw?.replace('USER_', '');
+    }
+
     if (!userId) {
-      console.error('Webhook: externalReference inválido', payment.externalReference);
-      return res.status(400).json({ error: 'Missing userId' });
+      console.error('Webhook: Usuário não encontrado para a referência', payment.externalReference);
+      // Retorna 400 para forçar o Asaas a tentar de novo caso o usuário termine o signUp instantes depois
+      return res.status(400).json({ error: 'User not found or not created yet' });
     }
 
     // FIX #7: Lógica de limites baseada no nome do plano enviado na referência

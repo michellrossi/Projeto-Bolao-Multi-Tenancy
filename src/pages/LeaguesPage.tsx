@@ -29,11 +29,9 @@ interface LeagueResponse {
 export default function LeaguesPage() {
   const { 
     user, 
-    hasLicense, 
-    maxLeaguesAllowed, 
     maxParticipantsAllowed 
   } = useAuth();
-  const { setLeague } = useLeague();
+  const { currentLeagueId, setLeague } = useLeague();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [ownedLeaguesCount, setOwnedLeaguesCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -259,8 +257,8 @@ export default function LeaguesPage() {
       if (error) { alert('Erro ao sair da liga: ' + error.message); return; }
     }
     setLeagues(prev => prev.filter(l => l.id !== leagueId));
-    if (localStorage.getItem('currentLeagueId') === leagueId) {
-      localStorage.removeItem('currentLeagueId');
+    if (currentLeagueId === leagueId) {
+      setLeague(null);
     }
   };
 

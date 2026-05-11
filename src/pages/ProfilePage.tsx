@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useLeague } from '../hooks/useLeague';
 import { Camera, Check, Loader2, User as UserIcon, Mail, Shield, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -26,6 +27,7 @@ const AVATARS = [
 
 export default function ProfilePage() {
   const { user, isAdmin, isApproved, hasLicense } = useAuth();
+  const { setLeague } = useLeague();
   const navigate = useNavigate();
 
   const [displayName, setDisplayName] = useState(
@@ -78,7 +80,7 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    localStorage.removeItem('currentLeagueId');
+    setLeague(null);
     navigate('/login');
   };
 

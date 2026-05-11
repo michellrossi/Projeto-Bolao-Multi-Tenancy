@@ -18,6 +18,7 @@ import PrivacidadePage from './pages/PrivacidadePage';
 import AdminResultsPage from './pages/AdminResultsPage';
 import { AuthProvider } from './hooks/useAuth';
 import { LeagueProvider } from './hooks/useLeague';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
 const router = createBrowserRouter([
@@ -63,7 +64,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <LeagueProvider>
-        <RouterProvider router={router} />
+        <ErrorBoundary>
+          <RouterProvider router={router} />
+        </ErrorBoundary>
       </LeagueProvider>
     </AuthProvider>
   </StrictMode>,

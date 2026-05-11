@@ -31,18 +31,7 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      // 1. Criar usuário no Supabase Auth primeiro para obter um ID estável
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: { data: { full_name: formData.name } }
-      });
-
-      if (authError) throw authError;
-      const user = authData.user;
-      if (!user) throw new Error('Erro ao criar usuário.');
-
-      // 2. Processar Pagamento via Asaas
+      // 1. Processar Pagamento via Asaas (Guest Checkout)
       let paymentResult: { paymentId?: string; error?: string };
       try {
         const paymentResponse = await fetch('/api/checkout', {
@@ -56,7 +45,7 @@ export default function CheckoutPage() {
             addressNumber: formData.addressNumber,
             phone: formData.phone,
             plan,
-            userId: user.id,
+            // userId omitido: a identificação no Asaas será via EMAIL_
             creditCard: {
               number: formData.cardNumber,
               expiry: formData.expiry,
@@ -72,6 +61,17 @@ export default function CheckoutPage() {
         const msg = paymentError instanceof Error ? paymentError.message : 'Erro no pagamento.';
         throw new Error(msg);
       }
+
+      // 2. Criar usuário no Supabase Auth APENAS se o pagamento for aprovado
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: { data: { full_name: formData.name } }
+      });
+
+      if (authError) throw authError;
+      const user = authData.user;
+      if (!user) throw new Error('Erro ao criar usuário.');
 
       // 3. Generate Code
       const code = Math.random().toString(36).substring(2, 10).toUpperCase();
