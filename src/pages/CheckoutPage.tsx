@@ -29,31 +29,7 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      // 1. Process Payment with Asaas (via our backend)
-      const paymentResponse = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          cpfCnpj: formData.cpf,
-          postalCode: formData.postalCode,
-          plan: plan,
-          creditCard: {
-            number: formData.cardNumber,
-            expiry: formData.expiry,
-            cvc: formData.cvc
-          }
-        })
-      });
-
-      const paymentResult = await paymentResponse.json();
-
-      if (!paymentResponse.ok) {
-        throw new Error(paymentResult.error || 'Erro ao processar pagamento.');
-      }
-
-      // 2. Create User in Supabase Auth (Payment Success!)
+      // 1. Criar usuário no Supabase Auth primeiro para obter um ID estável
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -67,6 +43,31 @@ export default function CheckoutPage() {
       if (authError) throw authError;
       const user = authData.user;
       if (!user) throw new Error("Erro ao criar usuário.");
+
+      // 2. Processar Pagamento via Asaas enviando o ID do usuário
+      const paymentResponse = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          cpfCnpj: formData.cpf,
+          postalCode: formData.postalCode,
+          plan: plan,
+          userId: user.id,
+          creditCard: {
+            number: formData.cardNumber,
+            expiry: formData.expiry,
+            cvc: formData.cvc
+          }
+        }),
+      });
+
+      const paymentResult = await paymentResponse.json();
+
+      if (!paymentResponse.ok) {
+        throw new Error(paymentResult.error || 'Erro ao processar pagamento.');
+      }
 
       // 3. Generate Code
       const code = Math.random().toString(36).substring(2, 10).toUpperCase();

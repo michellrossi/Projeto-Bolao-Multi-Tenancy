@@ -5,7 +5,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { name, email, plan, creditCard, cpfCnpj, postalCode } = req.body;
+  const { name, email, plan, creditCard, cpfCnpj, postalCode, userId } = req.body;
   const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
   const ASAAS_API_URL = process.env.ASAAS_API_URL;
 
@@ -49,6 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       value: parseFloat(plan.price),
       dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
       description: `Assinatura Plano ${plan.name} - Bolão Multi Tenancy`,
+      externalReference: `USER_${userId}`,
       creditCard: {
         holderName: name,
         number: creditCard.number.replace(/\s/g, ''),
