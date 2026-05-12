@@ -63,7 +63,10 @@ notify pgrst, 'reload schema';
 -- Cria o perfil automaticamente quando um usuário se cadastra
 create or replace function public.handle_new_user() 
 returns trigger as $$
+declare
+  code_data record;
 begin
+  -- 1. Inserção básica do perfil
   insert into public.users (id, email, display_name, photo_url)
   values (
     new.id, 
@@ -71,6 +74,34 @@ begin
     coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)), 
     coalesce(new.raw_user_meta_data->>'avatar_url', 'https://api.dicebear.com/7.x/avataaars/svg?seed=' || new.id)
   );
+
+  -- 2. Processamento do Código de Acesso (se fornecido no cadastro)
+  if new.raw_user_meta_data->>'access_code' is not null then
+    select * into code_data 
+    from public.purchase_codes 
+    where code = (new.raw_user_meta_data->>'access_code') 
+      and status = 'active' 
+      and used_by is null;
+
+    if found then
+      -- Ativa licença e limites
+      update public.users set 
+        has_license = true,
+        approved = true,
+        max_leagues_allowed = 1,
+        max_participants_allowed = code_data.max_participants,
+        plan_type = code_data.plan_type
+      where id = new.id;
+
+      -- Marca código como usado
+      update public.purchase_codes set 
+        used_by = new.id,
+        used_at = now(),
+        status = 'used'
+      where code = code_data.code;
+    end if;
+  end if;
+
   return new;
 end;
 $$ language plpgsql security definer;

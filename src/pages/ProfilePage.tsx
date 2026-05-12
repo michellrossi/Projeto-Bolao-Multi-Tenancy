@@ -42,7 +42,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-    
+
     // Carregar dados básicos
     setDisplayName(user.user_metadata?.full_name || '');
     setCurrentAvatar(user.user_metadata?.avatar_url || '');
@@ -59,9 +59,9 @@ export default function ProfilePage() {
             )
           `)
           .eq('user_id', user.id);
-        
+
         if (error) throw error;
-        
+
         if (data) {
           // Normaliza os dados para lidar com possíveis variações no retorno do Supabase
           const normalized = data.map((item: any) => {
@@ -116,7 +116,7 @@ export default function ProfilePage() {
   const handleSaveAvatar = async () => {
     if (!selectedAvatar) return;
     setSavingAvatar(true);
-    
+
     try {
       await supabase.auth.updateUser({
         data: { avatar_url: selectedAvatar },
@@ -193,11 +193,10 @@ export default function ProfilePage() {
                 <button
                   key={av}
                   onClick={() => setSelectedAvatar(av)}
-                  className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all ${
-                    (selectedAvatar || currentAvatar) === av
+                  className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all ${(selectedAvatar || currentAvatar) === av
                       ? 'border-primary shadow-[0_0_15px_rgba(0,255,133,0.3)] scale-110'
                       : 'border-white/5 hover:border-white/20'
-                  }`}
+                    }`}
                 >
                   <img src={av} className="w-full h-full object-cover" alt="" />
                   {(selectedAvatar || currentAvatar) === av && (
@@ -212,20 +211,19 @@ export default function ProfilePage() {
             <button
               onClick={handleSaveAvatar}
               disabled={!selectedAvatar || savingAvatar}
-              className={`w-full py-4 rounded-2xl uppercase tracking-widest text-sm font-black flex items-center justify-center gap-2 transition-all ${
-                selectedAvatar 
-                  ? 'bg-secondary text-dark hover:scale-[1.02] active:scale-95 shadow-lg shadow-secondary/20' 
+              className={`w-full py-4 rounded-2xl uppercase tracking-widest text-sm font-black flex items-center justify-center gap-2 transition-all ${selectedAvatar
+                  ? 'bg-secondary text-dark hover:scale-[1.02] active:scale-95 shadow-lg shadow-secondary/20'
                   : 'bg-white/5 text-white/20 cursor-not-allowed'
-              }`}
+                }`}
             >
-              {savingAvatar ? <Loader2 size={18} className="animate-spin" /> : savedAvatar ? <><Check size={18} /> Avatar Salvo!</> : <><Save size={18} /> Salvar Novo Avatar</>}
+              {savingAvatar ? <Loader2 size={18} className="animate-spin" /> : savedAvatar ? <><Check size={18} /> Avatar Salvo!</> : <><Save size={18} /> Salvar</>}
             </button>
           </div>
 
           {/* Registration Data */}
           <div className="glass-dark p-8 rounded-[2.5rem] border border-white/5 space-y-6">
             <h2 className="text-xs font-black uppercase tracking-widest text-white/30">Dados de Cadastro</h2>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1 block">Nome</label>
@@ -263,7 +261,7 @@ export default function ProfilePage() {
                     value="********"
                     className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white/40 cursor-not-allowed"
                   />
-                  <button 
+                  <button
                     onClick={handleResetPassword}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-white transition-all"
                   >
@@ -278,7 +276,7 @@ export default function ProfilePage() {
               disabled={saving}
               className="w-full py-4 bg-primary text-dark font-black rounded-2xl uppercase tracking-widest text-sm flex items-center justify-center gap-2 hover:scale-[1.02] transition-all disabled:opacity-50"
             >
-              {saving ? <Loader2 size={18} className="animate-spin" /> : saved ? <><Check size={18} /> Nome Salvo!</> : 'Salvar Alterações de Nome'}
+              {saving ? <Loader2 size={18} className="animate-spin" /> : saved ? <><Check size={18} /> Nome Salvo!</> : 'Salvar'}
             </button>
           </div>
         </div>
@@ -312,7 +310,7 @@ export default function ProfilePage() {
                 <div className="text-center py-12 space-y-4">
                   <Trophy className="w-12 h-12 text-white/5 mx-auto" />
                   <p className="text-xs text-white/20 italic">Você ainda não participa de nenhuma liga.</p>
-                  <button 
+                  <button
                     onClick={() => navigate('/app/ligas')}
                     className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
                   >

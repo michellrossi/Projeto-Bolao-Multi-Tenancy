@@ -65,6 +65,7 @@ export function LoginPage() {
           options: {
             data: {
               full_name: displayName || email.split('@')[0],
+              access_code: accessCode || null
             }
           }
         });
