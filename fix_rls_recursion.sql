@@ -1,12 +1,51 @@
 -- =============================================================================
--- FIX: Recursão infinita nas políticas RLS de league_members
--- Execute este script no Supabase SQL Editor (Dashboard > SQL Editor)
+-- FIX COMPLETO: Colunas faltantes + Recursão infinita nas políticas RLS
+-- Execute este script INTEIRO no Supabase SQL Editor (Dashboard > SQL Editor)
 -- =============================================================================
 
--- 1. Criar helper functions (SECURITY DEFINER) que bypassam RLS
---    para quebrar o ciclo de recursão
+-- =============================================
+-- PARTE 1: Adicionar colunas que faltam
+-- =============================================
 
--- Verifica se o uid é membro de uma liga específica
+-- Tabela USERS — adiciona colunas de licença/plano se não existirem
+do $$ 
+begin 
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='approved') then
+    alter table public.users add column approved boolean default false;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='has_license') then
+    alter table public.users add column has_license boolean default false;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='max_participants_allowed') then
+    alter table public.users add column max_participants_allowed integer default 15;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='max_leagues_allowed') then
+    alter table public.users add column max_leagues_allowed integer default 1;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='plan_type') then
+    alter table public.users add column plan_type text;
+  end if;
+end $$;
+
+-- Tabela LEAGUES — adiciona max_participants se não existir
+do $$ 
+begin 
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='leagues' and column_name='max_participants') then
+    alter table public.leagues add column max_participants integer default 15;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='leagues' and column_name='custom_logo') then
+    alter table public.leagues add column custom_logo text;
+  end if;
+end $$;
+
+-- Notifica o PostgREST para recarregar o schema cache imediatamente
+notify pgrst, 'reload schema';
+
+-- =============================================
+-- PARTE 2: Helper functions (SECURITY DEFINER)
+-- Quebram o ciclo de recursão infinita no RLS
+-- =============================================
+
 create or replace function public.is_member_of(_league_id uuid, _user_id uuid)
 returns boolean
 language sql
@@ -20,7 +59,6 @@ as $$
   );
 $$;
 
--- Retorna todos os league_ids de um usuário
 create or replace function public.get_my_league_ids(_user_id uuid)
 returns setof uuid
 language sql
@@ -31,7 +69,6 @@ as $$
   select league_id from league_members where user_id = _user_id;
 $$;
 
--- Verifica se dois usuários compartilham pelo menos uma liga
 create or replace function public.shares_league_with(_uid uuid, _other_uid uuid)
 returns boolean
 language sql
@@ -46,7 +83,9 @@ as $$
   );
 $$;
 
--- 2. Recriar TODAS as políticas que causavam recursão
+-- =============================================
+-- PARTE 3: Recriar políticas RLS sem recursão
+-- =============================================
 
 -- ===== USERS =====
 drop policy if exists "Users can view own profile" on users;
@@ -72,7 +111,6 @@ create policy "Members can see their leagues" on leagues for select using (
 drop policy if exists "Owners can manage their leagues" on leagues;
 create policy "Owners can manage their leagues" on leagues for all using (owner_id = auth.uid());
 
--- Permitir que qualquer usuário logado encontre uma liga pelo código de convite
 drop policy if exists "Anyone can find league by invite code" on leagues;
 create policy "Anyone can find league by invite code" on leagues for select using (true);
 
@@ -93,5 +131,12 @@ create policy "Owners can remove members" on league_members for delete using (
   exists (select 1 from leagues where id = league_members.league_id and owner_id = auth.uid())
 );
 
--- ===== DONE =====
--- Após executar, teste criando uma liga novamente.
+-- ===== RESULTS =====
+drop policy if exists "Public results" on results;
+create policy "Public results" on results for select using (true);
+
+-- =============================================
+-- PARTE 4: Recarregar cache do PostgREST
+-- (garante que as novas colunas apareçam na API)
+-- =============================================
+notify pgrst, 'reload schema';

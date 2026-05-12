@@ -68,17 +68,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             .maybeSingle();
 
           if (!userData) {
-            // Usuário existe no Auth mas não na tabela users (trigger falhou) — auto-cria
+            // Usuário existe no Auth mas não na tabela users (trigger falhou) — auto-cria via upsert
             const { data: newUser } = await supabase
               .from('users')
-              .insert({
+              .upsert({
                 id: user.id,
                 email: user.email,
                 display_name: user.user_metadata?.full_name || user.email?.split('@')[0],
                 photo_url: user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
                 approved: false
-              })
-              .select()
+              }, { onConflict: 'id' })
+              .select('approved, has_license, max_leagues_allowed, max_participants_allowed')
               .single();
 
             setIsApproved(newUser?.approved === true);
