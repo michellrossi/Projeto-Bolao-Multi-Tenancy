@@ -15,8 +15,8 @@ create table if not exists public.users (
   last_login timestamp with time zone default now(),
   approved boolean default false,
   has_license boolean default false,
-  max_participants_allowed integer default 15,
-  max_leagues_allowed integer default 1,
+  max_participants_allowed integer default 0,
+  max_leagues_allowed integer default 0,
   plan_type text,
   created_at timestamp with time zone default now()
 );
@@ -32,10 +32,10 @@ begin
     alter table public.users add column has_license boolean default false;
   end if;
   if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='max_participants_allowed') then
-    alter table public.users add column max_participants_allowed integer default 15;
+    alter table public.users add column max_participants_allowed integer default 0;
   end if;
   if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='max_leagues_allowed') then
-    alter table public.users add column max_leagues_allowed integer default 1;
+    alter table public.users add column max_leagues_allowed integer default 0;
   end if;
   if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='plan_type') then
     alter table public.users add column plan_type text;
@@ -48,6 +48,12 @@ begin
   if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='leagues' and column_name='custom_logo') then
     alter table public.leagues add column custom_logo text;
   end if;
+
+  -- Garante que quem não tem licença não tenha limites de criação
+  update public.users set 
+    max_leagues_allowed = 0, 
+    max_participants_allowed = 0 
+  where has_license = false and (max_leagues_allowed > 0 or max_participants_allowed > 0);
 end $$;
 
 -- Notifica o PostgREST para recarregar o schema cache imediatamente

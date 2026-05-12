@@ -321,7 +321,6 @@ export default function AdminResultsPage() {
                           </div>
                         </div>
                       );
-                      );
                     })}
                   </div>
                 </motion.div>

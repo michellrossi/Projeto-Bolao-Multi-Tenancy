@@ -18,8 +18,8 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   isApproved: false,
   hasLicense: false,
-  maxLeaguesAllowed: 1,
-  maxParticipantsAllowed: 15,
+  maxLeaguesAllowed: 0,
+  maxParticipantsAllowed: 0,
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -27,8 +27,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
   const [hasLicense, setHasLicense] = useState(false);
-  const [maxLeaguesAllowed, setMaxLeaguesAllowed] = useState(1);
-  const [maxParticipantsAllowed, setMaxParticipantsAllowed] = useState(15);
+  const [maxLeaguesAllowed, setMaxLeaguesAllowed] = useState(0);
+  const [maxParticipantsAllowed, setMaxParticipantsAllowed] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -83,13 +83,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             setIsApproved(newUser?.approved === true);
             setHasLicense(newUser?.has_license === true);
-            setMaxLeaguesAllowed(newUser?.max_leagues_allowed || 1);
-            setMaxParticipantsAllowed(newUser?.max_participants_allowed || 15);
+            setMaxLeaguesAllowed(newUser?.max_leagues_allowed || 0);
+            setMaxParticipantsAllowed(newUser?.max_participants_allowed || 0);
           } else {
             setIsApproved(userData?.approved === true);
             setHasLicense(userData?.has_license === true);
-            setMaxLeaguesAllowed(userData?.max_leagues_allowed || 1);
-            setMaxParticipantsAllowed(userData?.max_participants_allowed || 15);
+            setMaxLeaguesAllowed(userData?.max_leagues_allowed || 0);
+            setMaxParticipantsAllowed(userData?.max_participants_allowed || 0);
           }
         }
       } else {
