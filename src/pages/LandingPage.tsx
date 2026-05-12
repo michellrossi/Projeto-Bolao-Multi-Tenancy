@@ -17,8 +17,8 @@ export default function LandingPage() {
     {
       name: "Bronze",
       price: "47",
-      participants: 15,
-      features: ["Até 25 participantes", "1 bolão ativo", "Ranking em tempo real", "Suporte via WhatsApp"],
+      participants: 25,
+      features: ["Até 25 participantes", "Ranking em tempo real", "Suporte via WhatsApp"],
       popular: true,
       color: "from-orange-500/20 to-orange-500/5"
     },
@@ -26,7 +26,7 @@ export default function LandingPage() {
       name: "Prata",
       price: "97",
       participants: 50,
-      features: ["Até 50 participantes", "Bolões ilimitados", "Nome do bolão personalizado", "Histórico de palpites", "Suporte prioritário"],
+      features: ["Até 50 participantes", "Ranking em tempo real", "Suporte via WhatsApp"],
       popular: false,
       color: "from-primary/20 to-primary/5"
     },
@@ -34,7 +34,7 @@ export default function LandingPage() {
       name: "Ouro",
       price: "147",
       participants: 100,
-      features: ["Até 100 participantes", "Bolões ilimitados", "Sem marca d'água", "Acesso vitalício"],
+      features: ["Até 100 participantes", "Suporte Prioritário", "Acesso vitalício"],
       popular: false,
       color: "from-yellow-500/20 to-yellow-500/5"
     }

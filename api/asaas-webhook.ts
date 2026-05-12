@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // FIX #7: Lógica de limites baseada no nome do plano enviado na referência
-    let maxParticipants = 15; // Bronze (Padrão)
+    let maxParticipants = 25; // Bronze (Padrão)
     let maxLeagues = 1;
     let planName = planFromRef || 'Bronze';
 

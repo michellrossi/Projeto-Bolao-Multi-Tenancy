@@ -88,11 +88,11 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
         filter: `league_id=eq.${currentLeagueId}`
       }, (payload: RealtimePostgresChangesPayload<{ [key: string]: unknown }>) => {
         // Se a mudança for para o usuário atual
-        if (payload.new && (payload.new as any).user_id === user.id) {
-          setIsApproved((payload.new as any).status === 'approved');
+        if (payload.new && payload.new['user_id'] === user.id) {
+          setIsApproved(payload.new['status'] === 'approved');
         }
         // Se o registro foi deletado
-        if (payload.eventType === 'DELETE' && payload.old && (payload.old as any).user_id === user.id) {
+        if (payload.eventType === 'DELETE' && payload.old && payload.old['user_id'] === user.id) {
           setIsApproved(false);
         }
       })
@@ -102,7 +102,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
         filter: `id=eq.${currentLeagueId}`
       }, (payload: RealtimePostgresChangesPayload<{ [key: string]: unknown }>) => {
         if (payload.new) {
-          setIsOwner((payload.new as any).owner_id === user.id);
+          setIsOwner(payload.new['owner_id'] === user.id);
         }
       })
       .subscribe();
