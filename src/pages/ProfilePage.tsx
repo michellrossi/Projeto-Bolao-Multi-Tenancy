@@ -53,9 +53,10 @@ export default function ProfilePage() {
         const { data, error } = await supabase
           .from('league_members')
           .select(`
-            created_at,
-            leagues:leagues (
-              name
+            league_id,
+            leagues (
+              name,
+              created_at
             )
           `)
           .eq('user_id', user.id);
@@ -63,11 +64,10 @@ export default function ProfilePage() {
         if (error) throw error;
 
         if (data) {
-          // Normaliza os dados para lidar com possíveis variações no retorno do Supabase
           const normalized = data.map((item: any) => {
             const leagueObj = Array.isArray(item.leagues) ? item.leagues[0] : item.leagues;
             return {
-              created_at: item.created_at,
+              created_at: leagueObj?.created_at,
               name: leagueObj?.name || 'Liga Desconhecida'
             };
           });
