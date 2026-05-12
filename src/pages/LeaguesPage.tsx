@@ -29,7 +29,9 @@ interface LeagueResponse {
 export default function LeaguesPage() {
   const { 
     user, 
-    maxParticipantsAllowed 
+    maxParticipantsAllowed,
+    maxLeaguesAllowed,
+    hasLicense 
   } = useAuth();
   const { currentLeagueId, setLeague } = useLeague();
   const [leagues, setLeagues] = useState<League[]>([]);
