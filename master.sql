@@ -24,10 +24,34 @@ create table if not exists public.users (
 -- Migração: Adiciona colunas se a tabela já existia sem elas
 do $$ 
 begin 
-  if not exists (select 1 from INFORMATION_SCHEMA.COLUMNS where table_name = 'users' and column_name = 'max_leagues_allowed') then
+  -- Tabela USERS
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='approved') then
+    alter table public.users add column approved boolean default false;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='has_license') then
+    alter table public.users add column has_license boolean default false;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='max_participants_allowed') then
+    alter table public.users add column max_participants_allowed integer default 15;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='max_leagues_allowed') then
     alter table public.users add column max_leagues_allowed integer default 1;
   end if;
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name='plan_type') then
+    alter table public.users add column plan_type text;
+  end if;
+
+  -- Tabela LEAGUES
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='leagues' and column_name='max_participants') then
+    alter table public.leagues add column max_participants integer default 15;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='leagues' and column_name='custom_logo') then
+    alter table public.leagues add column custom_logo text;
+  end if;
 end $$;
+
+-- Notifica o PostgREST para recarregar o schema cache imediatamente
+notify pgrst, 'reload schema';
 
 -- 3. Trigger de Sincronização Auth -> Public
 -- Cria o perfil automaticamente quando um usuário se cadastra
@@ -115,6 +139,10 @@ alter table public.leagues enable row level security;
 alter table public.league_members enable row level security;
 alter table public.predictions enable row level security;
 alter table public.results enable row level security;
+alter table public.admins enable row level security;
+
+drop policy if exists "Admins are viewable by themselves" on admins;
+create policy "Admins are viewable by themselves" on admins for select using (email = auth.jwt() ->> 'email');
 
 -- =========================================================================
 -- Helper functions (SECURITY DEFINER) para quebrar ciclos de recursão RLS.
@@ -161,6 +189,19 @@ as $$
   );
 $$;
 
+-- Verifica se um email pertence à tabela de administradores
+create or replace function public.is_admin(_email text)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from admins where email = _email
+  );
+$$;
+
 -- =========================================================================
 -- Políticas de Usuários
 -- =========================================================================
@@ -176,6 +217,11 @@ create policy "Users can insert own profile" on users for insert with check (aut
 drop policy if exists "Co-members can see public profiles" on users;
 create policy "Co-members can see public profiles" on users for select using (
   public.shares_league_with(auth.uid(), id)
+);
+
+drop policy if exists "Admins can manage all users" on users;
+create policy "Admins can manage all users" on users for all using (
+  public.is_admin(auth.jwt() ->> 'email')
 );
 
 -- =========================================================================
@@ -225,6 +271,11 @@ create policy "Owners can remove members" on league_members for delete using (
 -- =========================================================================
 drop policy if exists "Public results" on results;
 create policy "Public results" on results for select using (true);
+
+drop policy if exists "Admins can manage results" on results;
+create policy "Admins can manage results" on results for all using (
+  public.is_admin(auth.jwt() ->> 'email')
+);
 
 -- FIX #2: Políticas completas para predictions (faltavam — bloqueava tudo com RLS ativo)
 drop policy if exists "Members can read predictions in their league" on predictions;

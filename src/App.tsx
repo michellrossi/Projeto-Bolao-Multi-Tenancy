@@ -21,7 +21,7 @@ export default function App() {
     return <Navigate to="/login" replace />;
   }
 
-  if (!currentLeagueId && location.pathname !== '/app/ligas') {
+  if (!currentLeagueId && location.pathname !== '/app/ligas' && location.pathname !== '/app/admin-resultados') {
     return <Navigate to="/app/ligas" replace />;
   }
 
