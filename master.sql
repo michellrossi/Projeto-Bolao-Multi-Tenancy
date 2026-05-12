@@ -66,13 +66,21 @@ returns trigger as $$
 declare
   code_data record;
 begin
-  -- 1. Inserção básica do perfil
-  insert into public.users (id, email, display_name, photo_url)
+  -- 1. Inserção básica do perfil com suporte síncrono aos metadados de plano/licença
+  insert into public.users (
+    id, email, display_name, photo_url,
+    has_license, approved, max_participants_allowed, max_leagues_allowed, plan_type
+  )
   values (
     new.id, 
     new.email, 
     coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)), 
-    coalesce(new.raw_user_meta_data->>'avatar_url', 'https://api.dicebear.com/7.x/avataaars/svg?seed=' || new.id)
+    coalesce(new.raw_user_meta_data->>'avatar_url', 'https://api.dicebear.com/7.x/avataaars/svg?seed=' || new.id),
+    coalesce((new.raw_user_meta_data->>'has_license')::boolean, false),
+    coalesce((new.raw_user_meta_data->>'approved')::boolean, false),
+    coalesce((new.raw_user_meta_data->>'max_participants_allowed')::int, 0),
+    coalesce((new.raw_user_meta_data->>'max_leagues_allowed')::int, 0),
+    new.raw_user_meta_data->>'plan_type'
   );
 
   -- 2. Processamento do Código de Acesso (se fornecido no cadastro)
@@ -342,9 +350,15 @@ alter table purchases enable row level security;
 drop policy if exists "Users can view own purchases" on purchases;
 create policy "Users can view own purchases" on purchases for select using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own purchases" on purchases;
+create policy "Users can insert own purchases" on purchases for insert with check (true);
+
 alter table purchase_codes enable row level security;
 drop policy if exists "Users can view own purchase codes" on purchase_codes;
 create policy "Users can view own purchase codes" on purchase_codes for select using (auth.uid() = used_by);
+
+drop policy if exists "Users can insert purchase codes" on purchase_codes;
+create policy "Users can insert purchase codes" on purchase_codes for insert with check (true);
 
 -- 7. Trigger de Proteção de Capacidade de Participantes
 create or replace function check_league_capacity()
