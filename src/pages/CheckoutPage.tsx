@@ -56,13 +56,35 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      // 1. Processar Pagamento via Asaas (Guest Checkout)
-      let paymentResult: { paymentId?: string; error?: string; isPix?: boolean; pixQrCode?: string; pixCopyPaste?: string; };
+      // 1. Criar usuário no Supabase Auth PRIMEIRO para obter o ID
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: { 
+          data: { 
+            full_name: formData.name,
+            // Inicialmente falso, será ativado pelo webhook ou pela API se for cartão
+            has_license: false,
+            approved: false,
+            max_participants_allowed: plan.participants,
+            max_leagues_allowed: plan.name === 'Bronze' ? 1 : 999,
+            plan_type: plan.name
+          } 
+        }
+      });
+
+      if (authError) throw authError;
+      const user = authData.user;
+      if (!user) throw new Error('Erro ao criar usuário.');
+
+      // 2. Processar Pagamento via Asaas passando o userId
+      let paymentResult: { paymentId?: string; error?: string; isPix?: boolean; pixQrCode?: string; pixCopyPaste?: string; code?: string };
       try {
         const paymentResponse = await fetch('/api/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            userId: user.id, // Passando o ID do usuário criado
             name: formData.name,
             email: formData.email,
             cpfCnpj: formData.cpf,
@@ -87,31 +109,11 @@ export default function CheckoutPage() {
         throw new Error(msg);
       }
 
-      // 2. Criar usuário no Supabase Auth APENAS se o pagamento for aprovado
-      // Enviamos os dados do plano nos metadados para que o gatilho síncrono handle_new_user grave tudo no banco com permissões totais de administrador.
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: { 
-          data: { 
-            full_name: formData.name,
-            has_license: paymentResult.isPix ? false : true,
-            approved: paymentResult.isPix ? false : true,
-            max_participants_allowed: plan.participants,
-            max_leagues_allowed: plan.name === 'Bronze' ? 1 : 999,
-            plan_type: plan.name
-          } 
-        }
-      });
-
-      if (authError) throw authError;
-      const user = authData.user;
-      if (!user) throw new Error('Erro ao criar usuário.');
-
-      // 3. Generate Code
-      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      // 3. Usar o código gerado pelo servidor
+      const code = paymentResult.code || 'ERRO_AO_GERAR';
       
       // 4. Update User Data (Tolerante a RLS na sessão anônima de confirmação de e-mail)
+      // O trigger síncrono no backend (master.sql) também cuida disso, mas este upsert ajuda a refletir no cliente.
       const { error: userError } = await supabase
         .from('users')
         .upsert({
@@ -127,32 +129,6 @@ export default function CheckoutPage() {
         });
 
       if (userError) console.warn('Aviso RLS no users ignorado no cliente (gerenciado via trigger síncrono no backend):', userError);
-
-      // 5. Save Purchase Record (Tolerante a RLS)
-      const { error: purchaseError } = await supabase
-        .from('purchases')
-        .insert({
-          user_id: user.id,
-          plan: plan.name,
-          price: plan.price,
-          code: code,
-          payment_id: paymentResult.paymentId
-        });
-
-      if (purchaseError) console.warn('Aviso RLS em purchases ignorado no cliente:', purchaseError);
-
-      // 6. Save License Code (Tolerante a RLS)
-      const { error: codeError } = await supabase
-        .from('purchase_codes')
-        .insert({
-          code: code,
-          max_participants: plan.participants,
-          used_by: user.id,
-          plan_type: plan.name,
-          status: paymentResult.isPix ? 'pending' : 'used'
-        });
-
-      if (codeError) console.warn('Aviso RLS em purchase_codes ignorado no cliente:', codeError);
 
       // 7. Fire-and-forget welcome email (se aprovado imediato)
       if (!paymentResult.isPix) {

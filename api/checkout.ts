@@ -55,15 +55,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 2. Create Payment
     const isPix = billingType === 'PIX';
 
-    // BYPASS PARA TESTES LOCAIS / SANDBOX
-    // Permite testar a compra fictícia perfeitamente se usar o cartão 4242... ou 0000...
-    if (!isPix && creditCard && (creditCard.number.startsWith('4242') || creditCard.number.startsWith('0000'))) {
-      return res.status(200).json({ 
-        success: true, 
-        paymentId: `mock_payment_${Date.now()}` 
-      });
-    }
-
     const paymentBody: any = {
       customer: customerId,
       billingType: isPix ? 'PIX' : 'CREDIT_CARD',
@@ -109,21 +100,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: paymentData.errors[0].description });
     }
 
-    if (isPix && paymentData.status === 'PENDING') {
-      const qrResponse = await fetch(`${ASAAS_API_URL}/payments/${paymentData.id}/pixQrCode`, {
-        headers: { 'access_token': ASAAS_API_KEY }
-      });
-      const qrData = await qrResponse.json();
+    // 3. Persistir compra no Banco de Dados se aprovado ou PIX gerado
+    if (userId && (paymentData.status === 'CONFIRMED' || paymentData.status === 'RECEIVED' || (isPix && paymentData.status === 'PENDING'))) {
+      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      
+      // Inserir registro de compra
+      const { error: purchaseError } = await supabaseAdmin
+        .from('purchases')
+        .insert({
+          user_id: userId,
+          plan: plan.name,
+          price: plan.price.toString(),
+          code: code,
+          payment_id: paymentData.id
+        });
+
+      if (purchaseError) {
+        console.error('Erro ao inserir purchase:', purchaseError);
+      }
+
+      // Inserir código de ativação
+      const { error: codeError } = await supabaseAdmin
+        .from('purchase_codes')
+        .insert({
+          code: code,
+          max_participants: plan.participants,
+          used_by: userId,
+          plan_type: plan.name,
+          status: isPix ? 'pending' : 'used'
+        });
+
+      if (codeError) {
+        console.error('Erro ao inserir purchase_code:', codeError);
+      }
+
+      // Se for PIX pendente, busca QR Code e retorna
+      if (isPix && paymentData.status === 'PENDING') {
+        const qrResponse = await fetch(`${ASAAS_API_URL}/payments/${paymentData.id}/pixQrCode`, {
+          headers: { 'access_token': ASAAS_API_KEY }
+        });
+        const qrData = await qrResponse.json();
+        return res.status(200).json({ 
+          success: true, 
+          paymentId: paymentData.id, 
+          isPix: true, 
+          pixQrCode: qrData.encodedImage, 
+          pixCopyPaste: qrData.payload,
+          code: code
+        });
+      }
+
+      // Se for cartão aprovado, retorna com o código gerado
       return res.status(200).json({ 
         success: true, 
-        paymentId: paymentData.id, 
-        isPix: true, 
-        pixQrCode: qrData.encodedImage, 
-        pixCopyPaste: qrData.payload 
+        paymentId: paymentData.id,
+        code: code 
       });
     }
 
-    if (paymentData.status === 'CONFIRMED' || paymentData.status === 'RECEIVED' || paymentData.status === 'PENDING') {
+    if (paymentData.status === 'CONFIRMED' || paymentData.status === 'RECEIVED') {
       return res.status(200).json({ success: true, paymentId: paymentData.id });
     } else {
       if (userId) await supabaseAdmin.auth.admin.deleteUser(userId);

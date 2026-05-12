@@ -5,18 +5,7 @@ import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
 import { supabase } from '../lib/supabase';
 import { getFlagUrl } from '../lib/flags';
 import { Info, LayoutGrid } from 'lucide-react';
-
-interface TeamStats {
-  name: string;
-  points: number;
-  played: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDifference: number;
-}
+import type { TeamStats } from '../lib/scoring';
 
 export default function GroupsPage() {
   const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
