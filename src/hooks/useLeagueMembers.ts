@@ -28,10 +28,9 @@ export function useLeagueMembers(leagueId: string | null) {
       if (league) setLeagueData(league);
 
       // Membros: join league_members → users (filtrado por league_id)
-      // FIX #5: Selecionando apenas os campos públicos para não vazar dados de planos e aprovação
       const { data: membersRaw, error } = await supabase
         .from('league_members')
-        .select('users(id, display_name, photo_url)')
+        .select('users(id, email, display_name, photo_url, approved)')
         .eq('league_id', leagueId)
         .range(0, 99); // Proteção contra payload excessivo
 

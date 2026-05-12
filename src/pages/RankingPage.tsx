@@ -1,11 +1,13 @@
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
+import { useLeague } from '../hooks/useLeague';
 import { useRanking } from '../hooks/useRanking';
 import { Trophy, TrendingUp, TrendingDown, Minus, Crown } from 'lucide-react';
 import type { UserRanking } from '../lib/types';
 
 export default function RankingPage() {
-  const { user: currentUser, currentLeagueId } = useAuth();
+  const { user: currentUser } = useAuth();
+  const { currentLeagueId } = useLeague();
   const { rankings, leagueName, loading } = useRanking(currentLeagueId);
 
   if (loading) return (

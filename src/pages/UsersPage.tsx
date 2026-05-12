@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useLeague } from '../hooks/useLeague';
 import { useLeagueMembers } from '../hooks/useLeagueMembers';
 import { UserCheck, UserX, ShieldCheck, Mail, Calendar, Search } from 'lucide-react';
 import type { UserProfile } from '../lib/types';
 
 export default function UsersPage() {
-  const { user: currentUser, isAdmin, currentLeagueId } = useAuth();
+  const { user: currentUser, isAdmin } = useAuth();
+  const { currentLeagueId } = useLeague();
   const { members, leagueData, loading } = useLeagueMembers(currentLeagueId);
   const [search, setSearch] = useState('');
   const [isOwner, setIsOwner] = useState(false);
