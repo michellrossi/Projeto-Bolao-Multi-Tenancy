@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useLeague } from '../hooks/useLeague';
-import { Camera, Check, Loader2, User as UserIcon, Mail, Shield, LogOut, Key, Trophy, Calendar } from 'lucide-react';
+import { Camera, Check, Loader2, User as UserIcon, Mail, Shield, LogOut, Key, Trophy, Calendar, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const AVATARS = [
@@ -35,7 +35,9 @@ export default function ProfilePage() {
   const [currentAvatar, setCurrentAvatar] = useState('');
   const [userLeagues, setUserLeagues] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [savingAvatar, setSavingAvatar] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedAvatar, setSavedAvatar] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -47,18 +49,32 @@ export default function ProfilePage() {
 
     // Carregar ligas
     const fetchLeagues = async () => {
-      const { data } = await supabase
-        .from('league_members')
-        .select(`
-          created_at,
-          leagues (
-            name
-          )
-        `)
-        .eq('user_id', user.id);
-      
-      if (data) {
-        setUserLeagues(data);
+      try {
+        const { data, error } = await supabase
+          .from('league_members')
+          .select(`
+            created_at,
+            leagues:leagues (
+              name
+            )
+          `)
+          .eq('user_id', user.id);
+        
+        if (error) throw error;
+        
+        if (data) {
+          // Normaliza os dados para lidar com possíveis variações no retorno do Supabase
+          const normalized = data.map((item: any) => {
+            const leagueObj = Array.isArray(item.leagues) ? item.leagues[0] : item.leagues;
+            return {
+              created_at: item.created_at,
+              name: leagueObj?.name || 'Liga Desconhecida'
+            };
+          });
+          setUserLeagues(normalized);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar ligas:', err);
       }
     };
     fetchLeagues();
@@ -66,7 +82,7 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  const handleSave = async () => {
+  const handleSaveProfile = async () => {
     if (!displayName.trim()) {
       setError('O nome não pode ser vazio.');
       return;
@@ -75,29 +91,52 @@ export default function ProfilePage() {
     setError('');
 
     try {
-      const photoUrl = selectedAvatar || currentAvatar;
-
       // Atualiza metadata do Auth
       await supabase.auth.updateUser({
-        data: { full_name: displayName, avatar_url: photoUrl },
+        data: { full_name: displayName },
       });
 
       // Atualiza tabela `users`
       const { error: dbErr } = await supabase
         .from('users')
-        .update({ display_name: displayName, photo_url: photoUrl })
+        .update({ display_name: displayName })
         .eq('id', user.id);
 
       if (dbErr) throw dbErr;
 
-      if (selectedAvatar) setCurrentAvatar(selectedAvatar);
-      setSelectedAvatar('');
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar perfil.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveAvatar = async () => {
+    if (!selectedAvatar) return;
+    setSavingAvatar(true);
+    
+    try {
+      await supabase.auth.updateUser({
+        data: { avatar_url: selectedAvatar },
+      });
+
+      const { error: dbErr } = await supabase
+        .from('users')
+        .update({ photo_url: selectedAvatar })
+        .eq('id', user.id);
+
+      if (dbErr) throw dbErr;
+
+      setCurrentAvatar(selectedAvatar);
+      setSelectedAvatar('');
+      setSavedAvatar(true);
+      setTimeout(() => setSavedAvatar(false), 3000);
+    } catch (err) {
+      console.error('Erro ao salvar avatar:', err);
+    } finally {
+      setSavingAvatar(false);
     }
   };
 
@@ -122,170 +161,195 @@ export default function ProfilePage() {
   const avatarSrc = selectedAvatar || currentAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
 
   return (
-    <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8 pb-20 animate-in fade-in duration-700">
-      <div className="space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-black text-white font-lexend tracking-tight uppercase mb-2">
-            Meu <span className="text-primary">Perfil</span>
-          </h1>
-          <p className="text-white/40 font-medium">Gerencie suas informações e avatar.</p>
-        </div>
-
-        {/* Avatar Selection */}
-        <div className="glass-dark p-8 rounded-[2.5rem] border border-white/5 space-y-8">
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-              <img
-                src={avatarSrc}
-                alt="Avatar"
-                className="w-28 h-28 rounded-3xl object-cover border-4 border-primary/30 shadow-xl"
-              />
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
-                <Camera size={16} className="text-dark" />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-            {AVATARS.map(av => (
-              <button
-                key={av}
-                onClick={() => setSelectedAvatar(av)}
-                className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all ${
-                  (selectedAvatar || currentAvatar) === av
-                    ? 'border-primary shadow-[0_0_15px_rgba(0,255,133,0.3)] scale-110'
-                    : 'border-white/5 hover:border-white/20'
-                }`}
-              >
-                <img src={av} className="w-full h-full object-cover" alt="" />
-                {(selectedAvatar || currentAvatar) === av && (
-                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                    <Check size={16} className="text-primary" />
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Registration Data */}
-        <div className="glass-dark p-8 rounded-[2.5rem] border border-white/5 space-y-6">
-          <h2 className="text-xs font-black uppercase tracking-widest text-white/30">Dados de Cadastro</h2>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1 block">Nome</label>
-              <div className="relative">
-                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm text-white focus:border-primary transition-all"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1 block">E-mail</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-                <input
-                  type="text"
-                  disabled
-                  value={user.email}
-                  className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white/40 cursor-not-allowed"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1 block">Senha</label>
-              <div className="relative">
-                <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-                <input
-                  type="password"
-                  disabled
-                  value="********"
-                  className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white/40 cursor-not-allowed"
-                />
-                <button 
-                  onClick={handleResetPassword}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-white transition-all"
-                >
-                  Trocar
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full py-4 bg-primary text-dark font-black rounded-2xl uppercase tracking-widest text-sm flex items-center justify-center gap-2 hover:scale-[1.02] transition-all disabled:opacity-50"
-          >
-            {saving ? <Loader2 size={18} className="animate-spin" /> : saved ? <><Check size={18} /> Salvo!</> : 'Salvar Alterações'}
-          </button>
-        </div>
+    <div className="max-w-4xl mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
+      {/* Header - Fora do Grid para alinhamento */}
+      <div className="text-center md:text-left">
+        <h1 className="text-4xl font-black text-white font-lexend tracking-tight uppercase mb-2">
+          Meu <span className="text-primary">Perfil</span>
+        </h1>
+        <p className="text-white/40 font-medium">Gerencie suas informações e avatar.</p>
       </div>
 
-      <div className="space-y-8">
-        {/* Leagues List */}
-        <div className="glass-dark p-8 rounded-[2.5rem] border border-white/5 space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xs font-black uppercase tracking-widest text-white/30">Meus Bolões ({userLeagues.length})</h2>
-            <Trophy size={16} className="text-primary/40" />
-          </div>
-
-          <div className="space-y-4">
-            {userLeagues.length > 0 ? (
-              userLeagues.map((ul, idx) => (
-                <div key={idx} className="bg-white/[0.03] p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-bold text-white text-sm uppercase tracking-tight">{ul.leagues?.name}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <Calendar size={10} className="text-white/20" />
-                      <span className="text-[10px] text-white/30 font-medium uppercase">
-                        Entrou em {new Date(ul.created_at).toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                  </div>
-                  <Check size={16} className="text-primary/40" />
+      <div className="grid md:grid-cols-2 gap-8 items-start">
+        {/* Lado Esquerdo */}
+        <div className="space-y-8">
+          {/* Avatar Selection */}
+          <div className="glass-dark p-8 rounded-[2.5rem] border border-white/5 space-y-8">
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative">
+                <img
+                  src={avatarSrc}
+                  alt="Avatar"
+                  className="w-28 h-28 rounded-3xl object-cover border-4 border-primary/30 shadow-xl"
+                />
+                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
+                  <Camera size={16} className="text-dark" />
                 </div>
-              ))
-            ) : (
-              <p className="text-xs text-white/20 text-center py-4 italic">Você ainda não participa de nenhuma liga.</p>
-            )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+              {AVATARS.map(av => (
+                <button
+                  key={av}
+                  onClick={() => setSelectedAvatar(av)}
+                  className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all ${
+                    (selectedAvatar || currentAvatar) === av
+                      ? 'border-primary shadow-[0_0_15px_rgba(0,255,133,0.3)] scale-110'
+                      : 'border-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <img src={av} className="w-full h-full object-cover" alt="" />
+                  {(selectedAvatar || currentAvatar) === av && (
+                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                      <Check size={16} className="text-primary" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleSaveAvatar}
+              disabled={!selectedAvatar || savingAvatar}
+              className={`w-full py-4 rounded-2xl uppercase tracking-widest text-sm font-black flex items-center justify-center gap-2 transition-all ${
+                selectedAvatar 
+                  ? 'bg-secondary text-dark hover:scale-[1.02] active:scale-95 shadow-lg shadow-secondary/20' 
+                  : 'bg-white/5 text-white/20 cursor-not-allowed'
+              }`}
+            >
+              {savingAvatar ? <Loader2 size={18} className="animate-spin" /> : savedAvatar ? <><Check size={18} /> Avatar Salvo!</> : <><Save size={18} /> Salvar Novo Avatar</>}
+            </button>
+          </div>
+
+          {/* Registration Data */}
+          <div className="glass-dark p-8 rounded-[2.5rem] border border-white/5 space-y-6">
+            <h2 className="text-xs font-black uppercase tracking-widest text-white/30">Dados de Cadastro</h2>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1 block">Nome</label>
+                <div className="relative">
+                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={e => setDisplayName(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm text-white focus:border-primary transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1 block">E-mail</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                  <input
+                    type="text"
+                    disabled
+                    value={user.email}
+                    className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white/40 cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1 block">Senha</label>
+                <div className="relative">
+                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                  <input
+                    type="password"
+                    disabled
+                    value="********"
+                    className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white/40 cursor-not-allowed"
+                  />
+                  <button 
+                    onClick={handleResetPassword}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-white transition-all"
+                  >
+                    Trocar
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveProfile}
+              disabled={saving}
+              className="w-full py-4 bg-primary text-dark font-black rounded-2xl uppercase tracking-widest text-sm flex items-center justify-center gap-2 hover:scale-[1.02] transition-all disabled:opacity-50"
+            >
+              {saving ? <Loader2 size={18} className="animate-spin" /> : saved ? <><Check size={18} /> Nome Salvo!</> : 'Salvar Alterações de Nome'}
+            </button>
           </div>
         </div>
 
-        {/* Account Info */}
-        <div className="glass-dark p-6 rounded-[2rem] border border-white/5 space-y-4">
-          <h2 className="text-xs font-black uppercase tracking-widest text-white/30">Status da Conta</h2>
-          <div className="space-y-3">
-            <InfoRow
-              icon={<Shield size={16} />}
-              label="Cargo"
-              value={isAdmin ? 'Administrador' : isApproved ? 'Competidor ativo' : 'Aguardando aprovação'}
-              highlight={isAdmin ? 'primary' : isApproved ? 'green' : 'yellow'}
-            />
-            <InfoRow
-              icon={<Trophy size={16} />}
-              label="Licença"
-              value={hasLicense ? 'Ativa' : 'Sem licença'}
-              highlight={hasLicense ? 'primary' : undefined}
-            />
-          </div>
-        </div>
+        {/* Lado Direito */}
+        <div className="space-y-8">
+          {/* Leagues List */}
+          <div className="glass-dark p-8 rounded-[2.5rem] border border-white/5 space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xs font-black uppercase tracking-widest text-white/30">Meus Bolões ({userLeagues.length})</h2>
+              <Trophy size={16} className="text-primary/40" />
+            </div>
 
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          className="w-full py-4 bg-red-500/10 text-red-500 font-black rounded-2xl uppercase tracking-widest text-sm border border-red-500/10 hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
-        >
-          <LogOut size={18} /> Sair da Conta
-        </button>
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              {userLeagues.length > 0 ? (
+                userLeagues.map((ul, idx) => (
+                  <div key={idx} className="bg-white/[0.03] p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-4 group hover:bg-white/[0.05] transition-all">
+                    <div>
+                      <p className="font-bold text-white text-sm uppercase tracking-tight group-hover:text-primary transition-colors">{ul.name}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Calendar size={10} className="text-white/20" />
+                        <span className="text-[10px] text-white/30 font-medium uppercase">
+                          Entrou em {ul.created_at ? new Date(ul.created_at).toLocaleDateString('pt-BR') : 'Data Indisp.'}
+                        </span>
+                      </div>
+                    </div>
+                    <Check size={16} className="text-primary/40" />
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 space-y-4">
+                  <Trophy className="w-12 h-12 text-white/5 mx-auto" />
+                  <p className="text-xs text-white/20 italic">Você ainda não participa de nenhuma liga.</p>
+                  <button 
+                    onClick={() => navigate('/app/ligas')}
+                    className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+                  >
+                    Encontrar um bolão
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Account Info */}
+          <div className="glass-dark p-6 rounded-[2rem] border border-white/5 space-y-4">
+            <h2 className="text-xs font-black uppercase tracking-widest text-white/30">Status da Conta</h2>
+            <div className="space-y-3">
+              <InfoRow
+                icon={<Shield size={16} />}
+                label="Cargo"
+                value={isAdmin ? 'Administrador' : isApproved ? 'Competidor ativo' : 'Aguardando aprovação'}
+                highlight={isAdmin ? 'primary' : isApproved ? 'green' : 'yellow'}
+              />
+              <InfoRow
+                icon={<Trophy size={16} />}
+                label="Licença"
+                value={hasLicense ? 'Ativa' : 'Sem licença'}
+                highlight={hasLicense ? 'primary' : undefined}
+              />
+            </div>
+          </div>
+
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            className="w-full py-4 bg-red-500/10 text-red-500 font-black rounded-2xl uppercase tracking-widest text-sm border border-red-500/10 hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
+          >
+            <LogOut size={18} /> Sair da Conta
+          </button>
+        </div>
       </div>
     </div>
   );
