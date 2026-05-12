@@ -157,11 +157,9 @@ export default function LeaguesPage() {
     setError('');
 
     try {
-      // 1. Find the league by invite code (inclui max_participants)
+      // 1. Find the league by invite code via RPC (seguro contra RLS aberto)
       const { data: league, error: findError } = await supabase
-        .from('leagues')
-        .select('id, name, owner_id, invite_code, max_participants')
-        .eq('invite_code', inviteCode.trim().toUpperCase())
+        .rpc('find_league_by_code', { _code: inviteCode.trim().toUpperCase() })
         .maybeSingle();
 
       if (findError || !league) {
@@ -170,14 +168,9 @@ export default function LeaguesPage() {
         return;
       }
 
-      // 2. Verifica capacidade máxima (validação no cliente — trigger no banco garante atomicidade)
+      // 2. Verifica capacidade máxima
       if (league.max_participants) {
-        const { count: currentCount } = await supabase
-          .from('league_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('league_id', league.id);
-
-        if ((currentCount ?? 0) >= league.max_participants) {
+        if ((league.members_count ?? 0) >= league.max_participants) {
           setError(`Esta liga já atingiu o limite de ${league.max_participants} participantes.`);
           setSubmitting(false);
           return;

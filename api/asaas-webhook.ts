@@ -74,6 +74,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       console.log(`Sucesso: Plano ${planName} ativado para o usuário ${userId}`);
 
+      // Buscar o código real salvo no banco durante o checkout
+      const { data: purchaseData } = await supabase
+        .from('purchases')
+        .select('code')
+        .eq('payment_id', payment.id)
+        .limit(1)
+        .maybeSingle();
+        
+      const realCode = purchaseData?.code || Math.random().toString(36).substring(2, 8).toUpperCase();
+
       // Disparo não-bloqueante do e-mail de boas-vindas
       fetch(`${process.env.APP_URL || 'https://projeto-bolao-multi-tenancy.vercel.app'}/api/welcome-email`, {
         method: 'POST',
@@ -86,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             price: payment.value, 
             participants: maxParticipants 
           },
-          code: Math.random().toString(36).substring(2, 8).toUpperCase()
+          code: realCode
         }),
       }).catch(err => console.warn('Falha silenciosa ao enviar welcome-email:', err));
 

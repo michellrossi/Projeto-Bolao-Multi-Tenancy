@@ -191,7 +191,14 @@ create policy "Owners can manage their leagues" on leagues for all using (owner_
 
 -- Permitir SELECT por invite_code (para join via código — usuário ainda não é membro)
 drop policy if exists "Anyone can find league by invite code" on leagues;
-create policy "Anyone can find league by invite code" on leagues for select using (true);
+
+create or replace function public.find_league_by_code(_code text)
+returns table(id uuid, name text, max_participants int, members_count bigint)
+language sql security definer set search_path = public as $$
+  select l.id, l.name, l.max_participants,
+    (select count(*) from league_members lm where lm.league_id = l.id)
+  from leagues l where l.invite_code = _code limit 1;
+$$;
 
 -- =========================================================================
 -- Políticas de Membros (league_members)

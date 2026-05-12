@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useLeague } from '../hooks/useLeague';
 import { supabase } from '../lib/supabase';
 import { isMatchLocked, calculatePoints, getGroupStandings, getKnockoutTeam } from '../lib/scoring';
+import { Standings } from '../lib/groups';
 
 const TABS = [...WORLD_CUP_2026_ROUNDS.map(r => r.name), "Mata-Mata"];
 
@@ -131,8 +132,8 @@ export default function PredictionsPage() {
   const currentMatches = activeTab === "Mata-Mata"
     ? KNOCKOUT_MATCHES.map(m => ({
       ...m,
-      homeTeam: getKnockoutTeam(standings, m.homePlaceholder, {} as any),
-      awayTeam: getKnockoutTeam(standings, m.awayPlaceholder, {} as any),
+      homeTeam: getKnockoutTeam(standings, m.homePlaceholder, {} as Standings),
+      awayTeam: getKnockoutTeam(standings, m.awayPlaceholder, {} as Standings),
       group: m.phase
     }))
     : activeRound?.matches || [];
