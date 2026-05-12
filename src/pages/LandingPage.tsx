@@ -1,9 +1,17 @@
+import { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Trophy, Users, Shield, Zap, ArrowRight, Check, Star, LayoutGrid, BarChart3, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes('type=signup') || hash.includes('type=recovery')) {
+      navigate('/login' + hash);
+    }
+  }, [navigate]);
 
   const plans = [
     {

@@ -20,11 +20,26 @@ export function LoginPage() {
 
   // Priority redirect if user is already detected
   useEffect(() => {
-    if (user) {
+    // Se estiver vindo de uma confirmação de e-mail ou recuperação de senha
+    const hash = window.location.hash;
+    if (hash.includes('type=signup') || hash.includes('type=recovery') || hash.includes('error=')) {
+      if (hash.includes('error=')) {
+        setError('O link de confirmação expirou ou é inválido.');
+      } else {
+        supabase.auth.signOut().then(() => {
+          setError('✓ E-mail confirmado com sucesso! Agora você pode entrar na arena.');
+        });
+      }
+      // Limpa o hash da URL para ficar limpo
+      window.history.replaceState(null, '', window.location.pathname);
+      return;
+    }
+
+    if (user && !loading) {
       console.log("User detected, navigating to palpites");
       navigate('/app/palpites');
     }
-  }, [user, navigate]);
+  }, [user, navigate, loading]);
 
   if (authLoading) {
     return (
