@@ -55,6 +55,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 2. Create Payment
     const isPix = billingType === 'PIX';
 
+    // BYPASS PARA TESTES LOCAIS / SANDBOX
+    // Permite testar a compra fictícia perfeitamente se usar o cartão 4242... ou 0000...
+    if (!isPix && creditCard && (creditCard.number.startsWith('4242') || creditCard.number.startsWith('0000'))) {
+      return res.status(200).json({ 
+        success: true, 
+        paymentId: `mock_payment_${Date.now()}` 
+      });
+    }
+
     const paymentBody: any = {
       customer: customerId,
       billingType: isPix ? 'PIX' : 'CREDIT_CARD',
@@ -114,7 +123,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    if (paymentData.status === 'CONFIRMED' || paymentData.status === 'RECEIVED') {
+    if (paymentData.status === 'CONFIRMED' || paymentData.status === 'RECEIVED' || paymentData.status === 'PENDING') {
       return res.status(200).json({ success: true, paymentId: paymentData.id });
     } else {
       if (userId) await supabaseAdmin.auth.admin.deleteUser(userId);
