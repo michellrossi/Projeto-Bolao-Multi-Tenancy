@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Usamos a SERVICE_ROLE_KEY para poder atualizar o usuário ignorando o RLS
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!, 
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL!, 
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
@@ -15,8 +15,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Segurança: Verifica o token configurado no painel do Asaas
   const asaasToken = req.headers['asaas-access-token'];
   if (process.env.ASAAS_WEBHOOK_TOKEN && asaasToken !== process.env.ASAAS_WEBHOOK_TOKEN) {
-    console.warn('Webhook: Token divergente ou não fornecido. Processando transação para evitar bloqueio em produção.');
-    // Alterado para não retornar 401, permitindo que as compras reais de produção ativem com sucesso
+    console.error('Webhook: Token inválido ou não fornecido.');
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const { event, payment } = req.body;

@@ -2,6 +2,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { UserProfile } from '../lib/types';
 
+interface MemberRow {
+  status: string;
+  users: {
+    id: string;
+    email: string;
+    display_name: string;
+    photo_url: string;
+    last_login: string;
+  } | null;
+}
+
 /**
  * Hook que busca membros de uma liga com seus perfis.
  * Filtra por league_id — não busca todos os usuários da plataforma.
@@ -39,15 +50,15 @@ export function useLeagueMembers(leagueId: string | null) {
       }
 
       if (membersRaw) {
-        const userList = membersRaw
-          .map((m: any) => {
+        const userList = (membersRaw as unknown as MemberRow[])
+          .map((m) => {
             if (!m.users) return null;
             return {
               ...m.users,
               approved: m.status === 'approved'
             };
           })
-          .filter(Boolean);
+          .filter((m): m is UserProfile => m !== null);
         setMembers(userList);
       }
     } catch (err) {

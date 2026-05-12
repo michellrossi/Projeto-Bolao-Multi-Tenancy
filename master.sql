@@ -367,15 +367,9 @@ alter table purchases enable row level security;
 drop policy if exists "Users can view own purchases" on purchases;
 create policy "Users can view own purchases" on purchases for select using (auth.uid() = user_id);
 
-drop policy if exists "Users can insert own purchases" on purchases;
-create policy "Users can insert own purchases" on purchases for insert with check (true);
-
 alter table purchase_codes enable row level security;
 drop policy if exists "Users can view own purchase codes" on purchase_codes;
 create policy "Users can view own purchase codes" on purchase_codes for select using (auth.uid() = used_by);
-
-drop policy if exists "Users can insert purchase codes" on purchase_codes;
-create policy "Users can insert purchase codes" on purchase_codes for insert with check (true);
 
 -- 7. Trigger de Proteção de Capacidade de Participantes
 create or replace function check_league_capacity()

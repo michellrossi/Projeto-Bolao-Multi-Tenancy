@@ -84,9 +84,9 @@ export function useRanking(leagueId: string | null) {
         return a.name.localeCompare(b.name);
       });
 
-      // Calcula tendência comparando com snapshot anterior (sessionStorage)
+      // Calcula tendência comparando com snapshot anterior (localStorage)
       const snapshotKey = `ranking_snapshot_${leagueId}`;
-      const prevSnapshotRaw = sessionStorage.getItem(snapshotKey);
+      const prevSnapshotRaw = localStorage.getItem(snapshotKey);
       if (prevSnapshotRaw) {
         const prevPositions: Record<string, number> = JSON.parse(prevSnapshotRaw);
         rankingList.forEach((player, currentPos) => {
@@ -106,7 +106,7 @@ export function useRanking(leagueId: string | null) {
       // Salva snapshot atual para próxima comparação
       const newSnapshot: Record<string, number> = {};
       rankingList.forEach((p, i) => { newSnapshot[p.id] = i; });
-      sessionStorage.setItem(snapshotKey, JSON.stringify(newSnapshot));
+      localStorage.setItem(snapshotKey, JSON.stringify(newSnapshot));
 
       setRankings(rankingList);
     } catch (error) {

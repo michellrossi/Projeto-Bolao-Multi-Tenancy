@@ -149,9 +149,10 @@ export default function CheckoutPage() {
         setPixData({ qrCode: paymentResult.pixQrCode!, copyPaste: paymentResult.pixCopyPaste! });
       }
       setSuccess(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Purchase error:", error);
-      alert("Erro ao processar compra: " + error.message);
+      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+      alert("Erro ao processar compra: " + message);
     } finally {
       setLoading(false);
     }

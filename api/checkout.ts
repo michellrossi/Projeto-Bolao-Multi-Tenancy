@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const supabaseAdmin = createClient(
-    process.env.VITE_SUPABASE_URL!,
+    process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 2. Create Payment
     const isPix = billingType === 'PIX';
 
-    const paymentBody: any = {
+    const paymentBody: Record<string, unknown> = {
       customer: customerId,
       billingType: isPix ? 'PIX' : 'CREDIT_CARD',
       value: parseFloat(plan.price),
@@ -116,7 +116,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
       if (purchaseError) {
-        console.error('Erro ao inserir purchase:', purchaseError);
+        if (userId) await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+        throw new Error('Falha ao registrar compra. Pagamento estornado automaticamente.');
       }
 
       // Inserir código de ativação
@@ -131,7 +132,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
       if (codeError) {
-        console.error('Erro ao inserir purchase_code:', codeError);
+        if (userId) await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+        throw new Error('Falha ao gerar código de acesso. Pagamento estornado automaticamente.');
       }
 
       // Se for PIX pendente, busca QR Code e retorna
@@ -165,11 +167,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: `Pagamento não autorizado. Status: ${paymentData.status}` });
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Asaas Integration Error:', error);
     if (userId) {
       await supabaseAdmin.auth.admin.deleteUser(userId).catch(e => console.error('Rollback falhou:', e));
     }
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    const message = error instanceof Error ? error.message : 'Internal Server Error';
+    return res.status(500).json({ error: message });
   }
 }

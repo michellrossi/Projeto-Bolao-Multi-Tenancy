@@ -25,6 +25,13 @@ const AVATARS = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Nina",
 ];
 
+interface LeagueMemberRow {
+  created_at: string;
+  name: string;
+  status: string;
+  isOwner: boolean;
+}
+
 export default function ProfilePage() {
   const { user, isAdmin, isApproved, hasLicense } = useAuth();
   const { setLeague } = useLeague();
@@ -34,7 +41,7 @@ export default function ProfilePage() {
   const [initialName, setInitialName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('');
   const [currentAvatar, setCurrentAvatar] = useState('');
-  const [userLeagues, setUserLeagues] = useState<any[]>([]);
+  const [userLeagues, setUserLeagues] = useState<LeagueMemberRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -57,6 +64,7 @@ export default function ProfilePage() {
           .from('league_members')
           .select(`
             status,
+            created_at,
             league_id,
             leagues (
               name,
@@ -69,7 +77,7 @@ export default function ProfilePage() {
         if (error) throw error;
 
         if (data) {
-          const normalized = data.map((item: any) => {
+          const normalized: LeagueMemberRow[] = (data as any[]).map((item) => {
             const leagueObj = Array.isArray(item.leagues) ? item.leagues[0] : item.leagues;
             const isOwnerOfLeague = leagueObj?.owner_id === user.id;
             
