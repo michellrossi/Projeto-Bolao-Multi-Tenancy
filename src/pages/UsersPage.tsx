@@ -10,7 +10,7 @@ import type { UserProfile } from '../lib/types';
 export default function UsersPage() {
   const { user: currentUser, isAdmin } = useAuth();
   const { currentLeagueId } = useLeague();
-  const { members, leagueData, loading } = useLeagueMembers(currentLeagueId);
+  const { members, leagueData, loading, mutate } = useLeagueMembers(currentLeagueId);
   const [search, setSearch] = useState('');
   const [isOwner, setIsOwner] = useState(false);
 
@@ -28,6 +28,9 @@ export default function UsersPage() {
         .update({ approved: !currentStatus })
         .eq('id', id);
       if (error) throw error;
+      
+      // Atualiza a lista imediatamente
+      mutate();
     } catch (error) {
       console.error('Error updating approval:', error);
     }

@@ -69,5 +69,5 @@ export function useLeagueMembers(leagueId: string | null) {
     return () => { sub.unsubscribe(); };
   }, [fetchData, leagueId]);
 
-  return { members, leagueData, loading };
+  return { members, leagueData, loading, mutate: fetchData };
 }

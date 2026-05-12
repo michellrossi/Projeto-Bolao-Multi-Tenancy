@@ -136,7 +136,15 @@ export function LoginPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-md px-6 py-12">
         <div className="glass-dark p-8 md:p-10 rounded-[3rem] shadow-2xl flex flex-col items-center border border-white/5">
           <img src="https://iili.io/BZG2miP.png" alt="Bolão 2026" className="h-44 w-auto object-contain mb-4" />
-          {error && <div className="w-full mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-xs font-bold text-center">{error}</div>}
+          {error && (
+            <div className={`w-full mb-6 p-4 border rounded-2xl text-xs font-bold text-center ${
+              error.startsWith('✓') 
+                ? 'bg-primary/10 border-primary/20 text-primary' 
+                : 'bg-red-500/10 border-red-500/20 text-red-500'
+            }`}>
+              {error}
+            </div>
+          )}
           <form onSubmit={handleEmailAuth} className="w-full space-y-4 mb-8">
             <AnimatePresence mode="wait">
               {isRegistering && (
