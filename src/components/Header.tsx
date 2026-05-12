@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
+import { useLeague } from '../hooks/useLeague';
 import { useNavigate } from 'react-router-dom';
 
 const AVATARS = [
