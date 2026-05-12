@@ -8,24 +8,24 @@ import { useLeague } from '../hooks/useLeague';
 import { useNavigate } from 'react-router-dom';
 
 const AVATARS = [
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Aiden",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Bibi",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Coco",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Dave",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Eden",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Fifi",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Gigi",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Hugo",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Izzy",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack"
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Aiden",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Bibi",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Coco",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Dave",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Eden",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Fifi",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Gigi",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Hugo",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Izzy",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack"
 ];
 
 export function Header() {
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
-  const { currentLeagueId, isApproved } = useLeague();
+  const { currentLeagueId, isApproved, isOwner } = useLeague();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
@@ -181,12 +181,12 @@ export function Header() {
                   {userData?.display_name || user.user_metadata?.full_name || 'Competidor'}
                 </p>
                 <p className="text-[8px] font-bold text-primary uppercase tracking-widest">
-                  {isAdmin ? 'Admin' : isApproved ? 'Competidor' : 'Pendente'}
+                  {isAdmin ? 'Admin' : isOwner ? 'Organizador' : isApproved ? 'Competidor' : 'Pendente'}
                 </p>
               </div>
               <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="relative group h-10 w-10 flex-shrink-0">
                 <img 
-                  src={userData?.photo_url || user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`} 
+                  src={userData?.photo_url || user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.id}`} 
                   alt="Perfil" 
                   className="w-10 h-10 rounded-xl object-cover border-2 border-white/10 group-hover:border-primary/50 transition-all"
                 />

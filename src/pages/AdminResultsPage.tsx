@@ -7,6 +7,7 @@ import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
 import type { Match, Round } from '../lib/matches';
 import { getFlagUrl } from '../lib/flags';
 import { Loader2, Search, ChevronDown, ChevronRight, Save, Trash2 } from 'lucide-react';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 interface ResultEntry {
   match_id: string;
@@ -24,6 +25,19 @@ export default function AdminResultsPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [expandedRounds, setExpandedRounds] = useState<Record<string, boolean>>({ '1ª Rodada': true });
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant: 'danger' | 'primary';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+    variant: 'primary'
+  });
 
   const fetchResults = useCallback(async () => {
     const { data } = await supabase.from('results').select('match_id, home_score, away_score');
@@ -58,36 +72,47 @@ export default function AdminResultsPage() {
     const a = Number(awayStr);
     if (isNaN(h) || isNaN(a) || h < 0 || a < 0) return;
 
-    if (!window.confirm('Confirma a publicação oficial deste resultado para toda a plataforma? Isso afetará os rankings.')) {
-      return;
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Publicar Resultado',
+      message: 'Confirma a publicação oficial deste resultado para toda a plataforma? Isso afetará os rankings imediatamente.',
+      variant: 'primary',
+      onConfirm: async () => {
+        setSaving(matchId);
+        try {
+          const { error } = await supabase
+            .from('results')
+            .upsert(
+              { match_id: matchId, home_score: h, away_score: a, updated_at: new Date().toISOString() },
+              { onConflict: 'match_id' }
+            );
+          if (error) throw error;
 
-    setSaving(matchId);
-    try {
-      const { error } = await supabase
-        .from('results')
-        .upsert(
-          { match_id: matchId, home_score: h, away_score: a, updated_at: new Date().toISOString() },
-          { onConflict: 'match_id' }
-        );
-      if (error) throw error;
-
-      setResults(prev => ({ ...prev, [matchId]: { match_id: matchId, home_score: h, away_score: a } }));
-    } catch (err) {
-      console.error('Error saving result:', err);
-      alert('Erro ao salvar resultado. Tente novamente.');
-    } finally {
-      setSaving(null);
-    }
+          setResults(prev => ({ ...prev, [matchId]: { match_id: matchId, home_score: h, away_score: a } }));
+        } catch (err) {
+          console.error('Error saving result:', err);
+          alert('Erro ao salvar resultado. Tente novamente.');
+        } finally {
+          setSaving(null);
+        }
+      }
+    });
   };
 
   const deleteResult = async (matchId: string) => {
-    if (!window.confirm('Remover o resultado oficial deste jogo?')) return;
-    await supabase.from('results').delete().eq('match_id', matchId);
-    setResults(prev => {
-      const copy = { ...prev };
-      delete copy[matchId];
-      return copy;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remover Resultado',
+      message: 'Tem certeza que deseja remover o resultado oficial deste jogo? Isso recalculará o ranking.',
+      variant: 'danger',
+      onConfirm: async () => {
+        await supabase.from('results').delete().eq('match_id', matchId);
+        setResults(prev => {
+          const copy = { ...prev };
+          delete copy[matchId];
+          return copy;
+        });
+      }
     });
   };
 
@@ -196,6 +221,15 @@ export default function AdminResultsPage() {
           </div>
         ))}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+      />
     </div>
   );
 }

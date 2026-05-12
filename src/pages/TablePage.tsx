@@ -5,11 +5,25 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { getFlagUrl } from '../lib/flags';
 import { Save, Lock, Edit3, Trash2 } from 'lucide-react';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 export default function TablePage() {
   const { isAdmin } = useAuth();
   const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
   const [loading, setLoading] = useState(true);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant: 'danger' | 'primary';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+    variant: 'primary'
+  });
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -46,14 +60,21 @@ export default function TablePage() {
     }
   };
 
-  const handleResetResult = async (matchId: string) => {
-    if (!confirm("Tem certeza que deseja resetar o resultado deste jogo?")) return;
-    try {
-      const { error } = await supabase.from('results').delete().eq('match_id', matchId);
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error resetting result:", error);
-    }
+  const handleResetResult = (matchId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Resetar Resultado',
+      message: 'Tem certeza que deseja resetar o resultado oficial deste jogo? Isso afetará os rankings e palpites dos usuários.',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from('results').delete().eq('match_id', matchId);
+          if (error) throw error;
+        } catch (error) {
+          console.error("Error resetting result:", error);
+        }
+      }
+    });
   };
 
   if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
@@ -117,6 +138,15 @@ export default function TablePage() {
           ))}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+      />
     </div>
   );
 }

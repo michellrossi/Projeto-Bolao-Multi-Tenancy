@@ -14,7 +14,7 @@ const TABS = [...WORLD_CUP_2026_ROUNDS.map(r => r.name), "Mata-Mata"];
 
 export default function PredictionsPage() {
   const { user } = useAuth();
-  const { currentLeagueId, isApproved } = useLeague();
+  const { currentLeagueId, isApproved, loading: leagueLoading } = useLeague();
   const [activeTab, setActiveTab] = useState("1ª Rodada");
   const [predictions, setPredictions] = useState<Record<string, { home: number; away: number }>>({});
   const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
@@ -109,7 +109,7 @@ export default function PredictionsPage() {
     }
   };
 
-  if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
+  if (loading || leagueLoading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
 
   if (!isApproved) {
     return (

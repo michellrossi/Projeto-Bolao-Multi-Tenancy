@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useLeague } from '../hooks/useLeague';
-import { Plus, Users, LogIn, Shield, Trophy, ArrowRight, CheckCircle2, Trash2, LogOut } from 'lucide-react';
+import { Plus, Users, LogIn, Shield, Trophy, ArrowRight, Trash2, LogOut } from 'lucide-react';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { useNavigate } from 'react-router-dom';
 
 interface League {
@@ -43,6 +44,19 @@ export default function LeaguesPage() {
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant: 'danger' | 'primary';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+    variant: 'primary'
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -235,27 +249,33 @@ export default function LeaguesPage() {
     navigate('/app/palpites');
   };
 
-  const handleLeaveLeague = async (leagueId: string, isOwner: boolean) => {
-    if (isOwner) {
-      const ok = window.confirm('Você é o dono desta liga. Ao sair, a liga e todos os dados serão EXCLUÍDOS permanentemente. Confirma?');
-      if (!ok) return;
-      // Exclusão em cascata (league_members, predictions, leagues)
-      const { error } = await supabase.from('leagues').delete().eq('id', leagueId);
-      if (error) { alert('Erro ao excluir liga: ' + error.message); return; }
-    } else {
-      const ok = window.confirm('Deseja sair desta liga? Seus palpites nela serão removidos.');
-      if (!ok) return;
-      const { error } = await supabase
-        .from('league_members')
-        .delete()
-        .eq('league_id', leagueId)
-        .eq('user_id', user?.id);
-      if (error) { alert('Erro ao sair da liga: ' + error.message); return; }
-    }
-    setLeagues(prev => prev.filter(l => l.id !== leagueId));
-    if (currentLeagueId === leagueId) {
-      setLeague(null);
-    }
+  const handleLeaveLeague = (leagueId: string, isOwner: boolean) => {
+    setConfirmModal({
+      isOpen: true,
+      title: isOwner ? 'Excluir Bolão' : 'Sair do Bolão',
+      message: isOwner 
+        ? 'Você é o organizador. Ao sair, este bolão e todos os dados dos participantes serão EXCLUÍDOS permanentemente. Confirma?'
+        : 'Tem certeza que deseja sair deste bolão? Seus palpites e progresso nesta liga serão removidos.',
+      variant: 'danger',
+      onConfirm: async () => {
+        if (isOwner) {
+          const { error } = await supabase.from('leagues').delete().eq('id', leagueId);
+          if (error) { alert('Erro ao excluir liga: ' + error.message); return; }
+        } else {
+          const { error } = await supabase
+            .from('league_members')
+            .delete()
+            .eq('league_id', leagueId)
+            .eq('user_id', user?.id);
+          if (error) { alert('Erro ao sair da liga: ' + error.message); return; }
+        }
+        setLeagues(prev => prev.filter(l => l.id !== leagueId));
+        if (currentLeagueId === leagueId) {
+          setLeague(null);
+        }
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
@@ -381,6 +401,15 @@ export default function LeaguesPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+      />
 
       {/* Create Modal */}
       <AnimatePresence>

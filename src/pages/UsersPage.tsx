@@ -157,7 +157,7 @@ function MemberCard({
       <div className="flex items-center gap-4 flex-1 overflow-hidden">
         <div className="relative">
           <img
-            src={member.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.id}`}
+            src={member.photo_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${member.id}`}
             alt=""
             className="w-14 h-14 rounded-2xl object-cover border-2 border-white/10"
           />

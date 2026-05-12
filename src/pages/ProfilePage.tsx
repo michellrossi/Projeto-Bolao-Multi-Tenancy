@@ -7,22 +7,22 @@ import { Camera, Check, Loader2, User as UserIcon, Mail, Shield, LogOut, Key, Tr
 import { useNavigate } from 'react-router-dom';
 
 const AVATARS = [
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Aiden",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Bibi",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Coco",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Dave",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Eden",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Fifi",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Gigi",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Hugo",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Izzy",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Kira",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Leo",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Mia",
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Nina",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Aiden",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Bibi",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Coco",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Dave",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Eden",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Fifi",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Gigi",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Hugo",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Izzy",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Kira",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Leo",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Mia",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Nina",
 ];
 
 export default function ProfilePage() {
@@ -31,6 +31,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
 
   const [displayName, setDisplayName] = useState('');
+  const [initialName, setInitialName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('');
   const [currentAvatar, setCurrentAvatar] = useState('');
   const [userLeagues, setUserLeagues] = useState<any[]>([]);
@@ -44,7 +45,9 @@ export default function ProfilePage() {
     if (!user) return;
 
     // Carregar dados básicos
-    setDisplayName(user.user_metadata?.full_name || '');
+    const name = user.user_metadata?.full_name || '';
+    setDisplayName(name);
+    setInitialName(name);
     setCurrentAvatar(user.user_metadata?.avatar_url || '');
 
     // Carregar ligas
@@ -112,6 +115,7 @@ export default function ProfilePage() {
 
       if (dbErr) throw dbErr;
 
+      setInitialName(displayName);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err: unknown) {
@@ -166,7 +170,7 @@ export default function ProfilePage() {
     navigate('/login');
   };
 
-  const avatarSrc = selectedAvatar || currentAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
+  const avatarSrc = selectedAvatar || currentAvatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.id}`;
 
   return (
     <div className="max-w-4xl mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
@@ -183,6 +187,7 @@ export default function ProfilePage() {
         <div className="space-y-8">
           {/* Avatar Selection */}
           <div className="glass-dark p-8 rounded-[2.5rem] border border-white/5 space-y-8">
+            <h2 className="text-xs font-black uppercase tracking-widest text-white/30 text-center">Seu Avatar</h2>
             <div className="flex flex-col items-center gap-4">
               <div className="relative">
                 <img
@@ -281,10 +286,14 @@ export default function ProfilePage() {
 
             <button
               onClick={handleSaveProfile}
-              disabled={saving}
-              className="w-full py-4 bg-primary text-dark font-black rounded-2xl uppercase tracking-widest text-sm flex items-center justify-center gap-2 hover:scale-[1.02] transition-all disabled:opacity-50"
+              disabled={saving || displayName === initialName}
+              className={`w-full py-4 rounded-2xl uppercase tracking-widest text-sm font-black flex items-center justify-center gap-2 transition-all ${
+                displayName !== initialName && !saving
+                  ? 'bg-primary text-dark hover:scale-[1.02] shadow-lg shadow-primary/20'
+                  : 'bg-white/5 text-white/20 cursor-not-allowed'
+              }`}
             >
-              {saving ? <Loader2 size={18} className="animate-spin" /> : saved ? <><Check size={18} /> Nome Salvo!</> : 'Salvar'}
+              {saving ? <Loader2 size={18} className="animate-spin" /> : saved ? <><Check size={18} /> Nome Salvo!</> : <><Save size={18} /> Salvar</>}
             </button>
           </div>
         </div>
