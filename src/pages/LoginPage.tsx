@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, currentLeagueId } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +22,7 @@ export function LoginPage() {
   useEffect(() => {
     if (user) {
       console.log("User detected, navigating to palpites");
-      navigate('/palpites');
+      navigate('/app/palpites');
     }
   }, [user, navigate]);
 
@@ -35,14 +35,14 @@ export function LoginPage() {
     );
   }
 
-  if (user) return <Navigate to="/palpites" replace />;
+  if (user) return <Navigate to="/app/palpites" replace />;
 
   const handleGoogleLogin = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/palpites`
+          redirectTo: `${window.location.origin}/app/palpites`
         }
       });
       if (error) throw error;
@@ -71,7 +71,7 @@ export function LoginPage() {
         if (error) throw error;
         if (data.user) {
           if (data.session) {
-            navigate('/palpites');
+            navigate('/app/palpites');
           } else {
             setError('Verifique seu e-mail para confirmar o cadastro.');
           }
@@ -82,7 +82,7 @@ export function LoginPage() {
           password,
         });
         if (error) throw error;
-        navigate('/palpites');
+        navigate('/app/palpites');
       }
     } catch (err: unknown) {
       console.error("Auth error:", err);

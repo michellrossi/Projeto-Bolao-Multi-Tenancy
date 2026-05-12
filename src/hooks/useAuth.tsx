@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .from('admins')
           .select('email')
           .eq('email', user.email)
-          .single();
+          .maybeSingle();
 
         const isAdminUser = !!adminDoc;
         setIsAdmin(isAdminUser);
@@ -61,13 +61,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setIsApproved(true);
           setHasLicense(true);
         } else {
-          const { data: userData, error } = await supabase
+          const { data: userData } = await supabase
             .from('users')
             .select('approved, has_license, max_leagues_allowed, max_participants_allowed')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
-          if (error && error.code === 'PGRST116') {
+          if (!userData) {
             // Usuário existe no Auth mas não na tabela users (trigger falhou) — auto-cria
             const { data: newUser } = await supabase
               .from('users')

@@ -24,7 +24,7 @@ export function NavBar() {
         .from('leagues')
         .select('owner_id')
         .eq('id', currentLeagueId)
-        .single();
+        .maybeSingle();
       
       setIsOwner(data?.owner_id === user.id);
     };

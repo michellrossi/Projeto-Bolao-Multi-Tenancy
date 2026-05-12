@@ -31,7 +31,7 @@ export function useRanking(leagueId: string | null) {
         .from('leagues')
         .select('name')
         .eq('id', leagueId)
-        .single();
+        .maybeSingle();
       if (leagueData) setLeagueName(leagueData.name);
 
       // 3. Membros + perfis (join direto — sem buscar todos os usuários)

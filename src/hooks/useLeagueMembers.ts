@@ -23,7 +23,7 @@ export function useLeagueMembers(leagueId: string | null) {
         .from('leagues')
         .select('name, owner_id')
         .eq('id', leagueId)
-        .single();
+        .maybeSingle();
 
       if (league) setLeagueData(league);
 

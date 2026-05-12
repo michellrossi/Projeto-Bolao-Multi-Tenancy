@@ -42,7 +42,7 @@ export function Header() {
           .from('leagues')
           .select('name, custom_logo')
           .eq('id', currentLeagueId)
-          .single();
+          .maybeSingle();
         
         if (data) {
           setCurrentLeagueName(data.name);
@@ -73,7 +73,7 @@ export function Header() {
         .from('users')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
       if (data) setUserData(data);
     };
 

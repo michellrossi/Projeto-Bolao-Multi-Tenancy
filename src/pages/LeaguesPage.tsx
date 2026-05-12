@@ -134,7 +134,7 @@ export default function LeaguesPage() {
 
       // Auto-select the newly created league
       setLeague(newLeague.id);
-      navigate('/palpites');
+      navigate('/app/palpites');
     } catch (err: any) {
       console.error("Error creating league:", err);
       if (err.message?.includes('LEAGUE_LIMIT')) {
@@ -160,7 +160,7 @@ export default function LeaguesPage() {
         .from('leagues')
         .select('id, name, owner_id, invite_code, max_participants')
         .eq('invite_code', inviteCode.trim().toUpperCase())
-        .single();
+        .maybeSingle();
 
       if (findError || !league) {
         setError('Código de convite inválido.');
@@ -188,7 +188,7 @@ export default function LeaguesPage() {
         .select('user_id')
         .eq('league_id', league.id)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (existingMember) {
         setError('Você já faz parte desta liga.');
@@ -225,7 +225,7 @@ export default function LeaguesPage() {
 
       // Auto-select the joined league
       setLeague(league.id);
-      navigate('/palpites');
+      navigate('/app/palpites');
     } catch (err) {
       console.error("Error joining league:", err);
       setError('Erro ao entrar na liga. Tente novamente.');
