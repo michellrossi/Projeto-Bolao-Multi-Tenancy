@@ -98,6 +98,7 @@ create table if not exists public.leagues (
 create table if not exists public.league_members (
   league_id uuid references public.leagues(id) on delete cascade,
   user_id uuid references public.users(id) on delete cascade,
+  created_at timestamp with time zone default now(),
   primary key (league_id, user_id)
 );
 
