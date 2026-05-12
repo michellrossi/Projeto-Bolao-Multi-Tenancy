@@ -13,8 +13,8 @@ import { Standings } from '../lib/groups';
 const TABS = [...WORLD_CUP_2026_ROUNDS.map(r => r.name), "Mata-Mata"];
 
 export default function PredictionsPage() {
-  const { user, isApproved } = useAuth();
-  const { currentLeagueId } = useLeague();
+  const { user } = useAuth();
+  const { currentLeagueId, isApproved } = useLeague();
   const [activeTab, setActiveTab] = useState("1ª Rodada");
   const [predictions, setPredictions] = useState<Record<string, { home: number; away: number }>>({});
   const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});

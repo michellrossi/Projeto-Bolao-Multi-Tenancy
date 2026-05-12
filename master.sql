@@ -49,6 +49,17 @@ begin
     alter table public.leagues add column custom_logo text;
   end if;
 
+  -- Tabela LEAGUE_MEMBERS (Status por liga)
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='league_members' and column_name='status') then
+    alter table public.league_members add column status text default 'pending';
+    -- Donos ficam aprovados automaticamente
+    update public.league_members lm set status = 'approved' 
+    from public.leagues l where l.id = lm.league_id and l.owner_id = lm.user_id;
+    -- Demais ficam aprovados se o usuario estava como approved globalmente no modelo antigo
+    update public.league_members lm set status = 'approved'
+    from public.users u where u.id = lm.user_id and u.approved = true and lm.status = 'pending';
+  end if;
+
   -- Garante que quem não tem licença não tenha limites de criação
   update public.users set 
     max_leagues_allowed = 0, 
@@ -137,6 +148,7 @@ create table if not exists public.leagues (
 create table if not exists public.league_members (
   league_id uuid references public.leagues(id) on delete cascade,
   user_id uuid references public.users(id) on delete cascade,
+  status text default 'pending',
   created_at timestamp with time zone default now(),
   primary key (league_id, user_id)
 );
@@ -309,6 +321,11 @@ create policy "Users can leave leagues" on league_members for delete using (auth
 
 drop policy if exists "Owners can remove members" on league_members;
 create policy "Owners can remove members" on league_members for delete using (
+  exists (select 1 from leagues where id = league_members.league_id and owner_id = auth.uid())
+);
+
+drop policy if exists "Owners can update members" on league_members;
+create policy "Owners can update members" on league_members for update using (
   exists (select 1 from leagues where id = league_members.league_id and owner_id = auth.uid())
 );
 

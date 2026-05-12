@@ -14,7 +14,6 @@ export function LoginPage() {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [accessCode, setAccessCode] = useState('');
   const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
   const [forgotSent, setForgotSent] = useState(false);
 
@@ -79,8 +78,7 @@ export function LoginPage() {
           password,
           options: {
             data: {
-              full_name: displayName || email.split('@')[0],
-              access_code: accessCode || null
+              full_name: displayName || email.split('@')[0]
             }
           }
         });
@@ -192,13 +190,7 @@ export function LoginPage() {
                 ✓ E-mail de redefinição enviado! Verifique sua caixa.
               </p>
             )}
-            <div className="pt-4 border-t border-white/5">
-              <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-3 ml-2">Possui um código de ativação?</p>
-              <div className="relative">
-                <Trophy className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/30" size={18} />
-                <input type="text" placeholder="Código de Acesso (Opcional)" value={accessCode} onChange={(e) => setAccessCode(e.target.value.toUpperCase())} className="w-full bg-primary/5 border border-primary/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-primary transition-all text-white font-mono tracking-widest" />
-              </div>
-            </div>
+
             <button disabled={loading} type="submit" className="w-full bg-primary text-dark font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-white transition-all uppercase tracking-widest text-xs disabled:opacity-50">
               {loading ? <Loader2 className="animate-spin" size={18} /> : <>{isRegistering ? 'Cadastrar agora' : 'Entrar na arena'} <ArrowRight size={16} /></>}
             </button>

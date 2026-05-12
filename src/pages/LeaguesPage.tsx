@@ -117,7 +117,8 @@ export default function LeaguesPage() {
         .from('league_members')
         .insert({
           league_id: newLeague.id,
-          user_id: user.id
+          user_id: user.id,
+          status: 'approved'
         });
 
       if (memberError) throw memberError;

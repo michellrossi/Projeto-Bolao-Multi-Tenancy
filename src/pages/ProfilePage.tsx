@@ -53,9 +53,11 @@ export default function ProfilePage() {
         const { data, error } = await supabase
           .from('league_members')
           .select(`
+            status,
             league_id,
             leagues (
               name,
+              owner_id,
               created_at
             )
           `)
@@ -66,9 +68,15 @@ export default function ProfilePage() {
         if (data) {
           const normalized = data.map((item: any) => {
             const leagueObj = Array.isArray(item.leagues) ? item.leagues[0] : item.leagues;
+            const isOwnerOfLeague = leagueObj?.owner_id === user.id;
+            
             return {
-              created_at: leagueObj?.created_at,
-              name: leagueObj?.name || 'Liga Desconhecida'
+              created_at: item.created_at || leagueObj?.created_at,
+              name: leagueObj?.name || 'Liga Desconhecida',
+              status: isOwnerOfLeague ? 'Dono' : 
+                      item.status === 'approved' ? 'Aprovado' : 
+                      item.status === 'blocked' ? 'Bloqueado' : 'Pendente',
+              isOwner: isOwnerOfLeague
             };
           });
           setUserLeagues(normalized);
@@ -286,11 +294,11 @@ export default function ProfilePage() {
           {/* Leagues List */}
           <div className="glass-dark p-8 rounded-[2.5rem] border border-white/5 space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-xs font-black uppercase tracking-widest text-white/30">Meus Bolões ({userLeagues.length})</h2>
+              <h2 className="text-xs font-black uppercase tracking-widest text-white/30">Meus Bolões e Status ({userLeagues.length})</h2>
               <Trophy size={16} className="text-primary/40" />
             </div>
 
-            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
               {userLeagues.length > 0 ? (
                 userLeagues.map((ul, idx) => (
                   <div key={idx} className="bg-white/[0.03] p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-4 group hover:bg-white/[0.05] transition-all">
@@ -299,11 +307,18 @@ export default function ProfilePage() {
                       <div className="flex items-center gap-1.5 mt-1">
                         <Calendar size={10} className="text-white/20" />
                         <span className="text-[10px] text-white/30 font-medium uppercase">
-                          Entrou em {ul.created_at ? new Date(ul.created_at).toLocaleDateString('pt-BR') : 'Data Indisp.'}
+                          Membro desde {ul.created_at ? new Date(ul.created_at).toLocaleDateString('pt-BR') : 'Data Indisp.'}
                         </span>
                       </div>
                     </div>
-                    <Check size={16} className="text-primary/40" />
+                    <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      ul.status === 'Dono' ? 'bg-primary/20 text-primary border border-primary/20' :
+                      ul.status === 'Aprovado' ? 'bg-green-500/20 text-green-500 border border-green-500/20' :
+                      ul.status === 'Bloqueado' ? 'bg-red-500/20 text-red-500 border border-red-500/20' :
+                      'bg-yellow-500/20 text-yellow-500 border border-yellow-500/20'
+                    }`}>
+                      {ul.status}
+                    </div>
                   </div>
                 ))
               ) : (
@@ -321,24 +336,18 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Account Info */}
-          <div className="glass-dark p-6 rounded-[2rem] border border-white/5 space-y-4">
-            <h2 className="text-xs font-black uppercase tracking-widest text-white/30">Status da Conta</h2>
-            <div className="space-y-3">
-              <InfoRow
-                icon={<Shield size={16} />}
-                label="Cargo"
-                value={isAdmin ? 'Administrador' : isApproved ? 'Competidor ativo' : 'Aguardando aprovação'}
-                highlight={isAdmin ? 'primary' : isApproved ? 'green' : 'yellow'}
-              />
-              <InfoRow
-                icon={<Trophy size={16} />}
-                label="Licença"
-                value={hasLicense ? 'Ativa' : 'Sem licença'}
-                highlight={hasLicense ? 'primary' : undefined}
-              />
+          {/* Account Status Info Summary (Simplified) */}
+          {hasLicense && (
+            <div className="bg-primary/5 border border-primary/10 p-6 rounded-2xl flex items-center gap-4">
+              <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                <Shield size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Licença Organizador</p>
+                <p className="text-xs text-white/60 font-medium">Você possui uma licença ativa para criar bolões.</p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Logout */}
           <button

@@ -22,11 +22,13 @@ export default function UsersPage() {
   }, [leagueData, currentUser]);
 
   const handleToggleApproval = async (id: string, currentStatus: boolean) => {
+    if (!currentLeagueId) return;
     try {
       const { error } = await supabase
-        .from('users')
-        .update({ approved: !currentStatus })
-        .eq('id', id);
+        .from('league_members')
+        .update({ status: currentStatus ? 'pending' : 'approved' })
+        .eq('league_id', currentLeagueId)
+        .eq('user_id', id);
       if (error) throw error;
       
       // Atualiza a lista imediatamente

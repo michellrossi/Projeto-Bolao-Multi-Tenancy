@@ -23,7 +23,8 @@ const AVATARS = [
 
 export function Header() {
   const navigate = useNavigate();
-  const { user, isApproved, isAdmin, currentLeagueId } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const { currentLeagueId, isApproved } = useLeague();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
@@ -141,11 +142,18 @@ export function Header() {
     <>
       <header className="bg-dark/80 backdrop-blur-xl flex justify-between items-center w-full px-6 h-20 fixed top-0 z-50 border-b border-white/5 shadow-2xl">
         <div className="flex items-center gap-6">
-          <img 
-            src={currentLeagueLogo || "https://iili.io/BZG2miP.png"} 
-            alt="Logo" 
-            className="h-12 w-auto object-contain" 
-          />
+          <a 
+            href="/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="hover:opacity-80 transition-opacity"
+          >
+            <img 
+              src={currentLeagueLogo || "https://iili.io/BZG2miP.png"} 
+              alt="Logo" 
+              className="h-12 w-auto object-contain" 
+            />
+          </a>
           
           <AnimatePresence>
             {currentLeagueName && (
@@ -153,7 +161,7 @@ export function Header() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                className="hidden md:flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-2xl"
+                className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-primary/10 border border-primary/20 rounded-2xl"
               >
                 <Trophy size={14} className="text-primary" />
                 <span className="text-[11px] font-black uppercase tracking-widest text-white truncate max-w-[200px]">

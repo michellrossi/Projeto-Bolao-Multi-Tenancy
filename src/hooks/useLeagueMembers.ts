@@ -30,7 +30,7 @@ export function useLeagueMembers(leagueId: string | null) {
       // Membros: join league_members → users (filtrado por league_id)
       const { data: membersRaw, error } = await supabase
         .from('league_members')
-        .select('users(id, email, display_name, photo_url, approved)')
+        .select('status, users(id, email, display_name, photo_url, last_login)')
         .eq('league_id', leagueId)
         .range(0, 99); // Proteção contra payload excessivo
 
@@ -40,7 +40,13 @@ export function useLeagueMembers(leagueId: string | null) {
 
       if (membersRaw) {
         const userList = membersRaw
-          .map((m: { users: UserProfile }) => m.users)
+          .map((m: any) => {
+            if (!m.users) return null;
+            return {
+              ...m.users,
+              approved: m.status === 'approved'
+            };
+          })
           .filter(Boolean);
         setMembers(userList);
       }

@@ -43,6 +43,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Real-time listener for profile changes (license, approval, etc)
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`profile_changes_${user.id}`)
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        table: 'users', 
+        filter: `id=eq.${user.id}` 
+      }, () => {
+        handleUserChange(user);
+      })
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user]);
+
   const handleUserChange = async (user: User | null) => {
     try {
       setUser(user);
