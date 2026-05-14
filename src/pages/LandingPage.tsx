@@ -8,17 +8,17 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
-  // Redireciona usuário logado direto para o app
-  if (!loading && user) {
-    return <Navigate to="/app/palpites" replace />;
-  }
-
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.includes('type=signup') || hash.includes('type=recovery')) {
       navigate('/login' + hash);
     }
   }, [navigate]);
+
+  // Redireciona usuário logado direto para o app
+  if (!loading && user) {
+    return <Navigate to="/app/palpites" replace />;
+  }
 
   const plans = [
     {
