@@ -91,7 +91,7 @@ export default function ProfilePage() {
         // Passo 1: buscar IDs das ligas do usuário
         const { data: memberships, error: memErr } = await supabase
           .from('league_members')
-          .select('league_id, status, created_at')
+          .select('league_id, status')
           .eq('user_id', user.id);
 
         if (memErr) throw memErr;
@@ -111,7 +111,7 @@ export default function ProfilePage() {
           const league = leagues?.find(l => l.id === m.league_id);
           if (!league) return null;
           return {
-            created_at: m.created_at || league.created_at,
+            created_at: league.created_at, // Usar a data da liga como referência
             name: league.name,
             status: league.owner_id === user.id ? 'Dono'
                   : m.status === 'approved' ? 'Aprovado'
