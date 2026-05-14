@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Trophy, Users, Shield, Zap, ArrowRight, Check, Star, LayoutGrid, BarChart3, MessageCircle } from 'lucide-react';
+import { Trophy, Users, Shield, Zap, ArrowRight, Check, Star, LayoutGrid, BarChart3, MessageCircle, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function LandingPage() {
