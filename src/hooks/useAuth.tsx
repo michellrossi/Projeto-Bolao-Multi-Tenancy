@@ -31,16 +31,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [maxParticipantsAllowed, setMaxParticipantsAllowed] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Caso especial para o Modo Demo (Visitante sem login)
-  // CRÍTICO: Só deve retornar o demoUser se estiver explicitamente na rota /demo
-  const isDemoPath = window.location.pathname.startsWith('/demo');
-  const isDemoMode = isDemoPath && localStorage.getItem('currentLeagueId') === '99999999-9999-9999-9999-999999999999';
-  
-  const demoUser = useMemo(() => isDemoMode ? ({
-    id: '00000000-0000-0000-0000-000000000000',
-    email: 'visitante@demo.com',
-    user_metadata: { full_name: 'Visitante (Demo)', avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo' }
-  } as User) : null, [isDemoMode]);
+  // Nota: O demoUser foi movido para dentro do hook useAuth para garantir reatividade 
+  // instantânea sem depender de re-renders do Provider pai.
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -137,17 +129,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{
-      user: user || demoUser,
+      user,
       loading,
-      isAdmin: isDemoMode ? false : isAdmin,
-      isApproved: isDemoMode ? true : isApproved,
-      hasLicense: isDemoMode ? true : hasLicense,
-      maxLeaguesAllowed: isDemoMode ? 1 : maxLeaguesAllowed,
-      maxParticipantsAllowed: isDemoMode ? 100 : maxParticipantsAllowed,
+      isAdmin,
+      isApproved,
+      hasLicense,
+      maxLeaguesAllowed,
+      maxParticipantsAllowed,
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  
+  // Lógica reativa para o Modo Demo — Calculada em cada chamada do hook
+  const isDemoPath = window.location.pathname.startsWith('/demo');
+  const isDemoMode = isDemoPath && localStorage.getItem('currentLeagueId') === '99999999-9999-9999-9999-999999999999';
+
+  if (isDemoMode && !context.user) {
+    return {
+      ...context,
+      user: {
+        id: '00000000-0000-0000-0000-000000000000',
+        email: 'visitante@demo.com',
+        user_metadata: { full_name: 'Visitante (Demo)', avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo' }
+      } as any,
+      isApproved: true,
+      hasLicense: true,
+      maxLeaguesAllowed: 1,
+      maxParticipantsAllowed: 100,
+    };
+  }
+
+  return context;
+};

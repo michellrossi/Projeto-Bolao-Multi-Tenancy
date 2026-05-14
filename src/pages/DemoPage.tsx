@@ -28,19 +28,17 @@ export default function DemoPage() {
   const [showConversionModal, setShowConversionModal] = useState(false);
   const { currentLeagueId, setLeague } = useLeague();
 
-  // Forçar o ID da liga no mount para que os hooks das páginas usem a liga demo imediatamente
   useEffect(() => {
     const originalLeagueId = localStorage.getItem('currentLeagueId');
-    
-    // Pequeno atraso para garantir que o contexto está pronto
     setLeague(DEMO_LEAGUE_ID);
     
     return () => {
-      // Ao sair da página demo, restauramos a liga anterior (se houver)
+      // Ao desmontar (sair da rota /demo), limpamos o estado da liga
+      // Se já houver um originalLeagueId real (que não seja a demo), restauramos.
       if (originalLeagueId && originalLeagueId !== DEMO_LEAGUE_ID) {
         setLeague(originalLeagueId);
       } else {
-        localStorage.removeItem('currentLeagueId');
+        setLeague(null);
       }
     };
   }, []);
@@ -73,7 +71,7 @@ export default function DemoPage() {
   };
 
   const handleExitDemo = () => {
-    localStorage.removeItem('currentLeagueId');
+    setLeague(null);
     navigate('/');
   };
 
