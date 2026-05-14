@@ -178,11 +178,14 @@ export default function PredictionsPage() {
             const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx - 1].group !== match.group);
 
             return (
-              <div key={match.id} className={showPhase ? "md:col-span-2 space-y-4" : ""}>
+            return (
+              <>
                 {showPhase && (
-                  <h3 className="text-xl font-black text-secondary font-lexend uppercase tracking-tight mt-6 border-l-4 border-secondary pl-4">
-                    {match.group}
-                  </h3>
+                  <div className="md:col-span-2">
+                    <h3 className="text-xl font-black text-secondary font-lexend uppercase tracking-tight mt-6 mb-4 border-l-4 border-secondary pl-4">
+                      {match.group}
+                    </h3>
+                  </div>
                 )}
                 <MatchCard
                   match={match}
@@ -190,7 +193,8 @@ export default function PredictionsPage() {
                   result={results[match.id]}
                   onSave={handleSavePrediction}
                 />
-              </div>
+              </>
+            );
             );
           })}
         </motion.div>
@@ -292,15 +296,20 @@ function MatchCard({ match, prediction, result, onSave }: { match: Match; predic
 
                 {points !== null && (
                   <motion.div
-                    initial={{ y: 10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    className={`px-3 py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg ${points === 3 ? 'bg-primary text-dark glow-primary' :
-                        points === 1 ? 'bg-secondary text-dark' :
-                          'bg-white/10 text-white/40 border border-white/10'
+                    initial={{ y: 10, opacity: 0, scale: 0.5 }}
+                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                    className={`px-4 py-2.5 rounded-2xl font-black text-[11px] uppercase tracking-[0.1em] flex flex-col items-center gap-1 shadow-2xl border-2 ${points === 3 
+                        ? 'bg-primary text-dark border-primary/50 glow-primary scale-110' :
+                        points === 1 
+                        ? 'bg-secondary text-dark border-secondary/50 glow-secondary' :
+                        'bg-white/10 text-white/40 border-white/10'
                       }`}
                   >
-                    <Trophy size={12} />
-                    {points} PTS
+                    <span className="text-[8px] opacity-60">Você fez</span>
+                    <div className="flex items-center gap-1.5">
+                      <Trophy size={14} />
+                      {points} {points === 1 ? 'PONTO' : 'PONTOS'}
+                    </div>
                   </motion.div>
                 )}
               </motion.div>

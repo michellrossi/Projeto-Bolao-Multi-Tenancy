@@ -6,23 +6,22 @@ import { useLeague } from '../hooks/useLeague';
 import { Camera, Check, Loader2, User as UserIcon, Mail, Shield, LogOut, Key, Trophy, Calendar, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+const AVATAR_COLLECTIONS = {
+  adventurer: [
+    "Felix", "Aneka", "Aiden", "Bibi", "Coco", "Dave", "Eden", "Fifi", "Gigi", "Hugo"
+  ],
+  avataaars: [
+    "Nala", "Loki", "Zoey", "Milo", "Leo", "Luna", "Jasper", "Cleo", "Simba", "Shadow"
+  ],
+  funEmoji: [
+    "Cool", "Love", "Happy", "Blush", "Smile", "Kiss", "Wink", "Laugh", "Star", "Heart"
+  ]
+};
+
 const AVATARS = [
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Aiden",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Bibi",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Coco",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Dave",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Eden",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Fifi",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Gigi",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Hugo",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Izzy",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Kira",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Leo",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Mia",
-  "https://api.dicebear.com/7.x/adventurer/svg?seed=Nina",
+  ...AVATAR_COLLECTIONS.adventurer.map(s => `https://api.dicebear.com/7.x/adventurer/svg?seed=${s}`),
+  ...AVATAR_COLLECTIONS.avataaars.map(s => `https://api.dicebear.com/7.x/avataaars/svg?seed=${s}`),
+  ...AVATAR_COLLECTIONS.funEmoji.map(s => `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${s}`)
 ];
 
 interface LeagueMemberRow {
@@ -231,20 +230,20 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
               {AVATARS.map(av => (
                 <button
                   key={av}
                   onClick={() => setSelectedAvatar(av)}
-                  className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all ${(selectedAvatar || currentAvatar) === av
-                      ? 'border-primary shadow-[0_0_15px_rgba(0,255,133,0.3)] scale-110'
+                  className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${(selectedAvatar || currentAvatar) === av
+                      ? 'border-primary shadow-[0_0_10px_rgba(0,255,133,0.3)] scale-110'
                       : 'border-white/5 hover:border-white/20'
                     }`}
                 >
                   <img src={av} className="w-full h-full object-cover" alt="" />
                   {(selectedAvatar || currentAvatar) === av && (
                     <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                      <Check size={16} className="text-primary" />
+                      <Check size={12} className="text-primary" />
                     </div>
                   )}
                 </button>

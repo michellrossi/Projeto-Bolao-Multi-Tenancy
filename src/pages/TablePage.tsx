@@ -106,7 +106,6 @@ export default function TablePage() {
               <tr className="bg-white/5">
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 w-32">Data/Hora</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 text-center">Partida</th>
-                {isAdmin && <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 text-right w-32">Ação</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -114,10 +113,7 @@ export default function TablePage() {
                 <ResultRow 
                   key={match.id} 
                   match={match} 
-                  isAdmin={isAdmin} 
                   savedResult={results[match.id]} 
-                  onSave={handleSaveResult}
-                  onReset={handleResetResult}
                 />
               ))}
             </tbody>
@@ -130,10 +126,7 @@ export default function TablePage() {
             <ResultCard
               key={match.id}
               match={match}
-              isAdmin={isAdmin}
               savedResult={results[match.id]}
-              onSave={handleSaveResult}
-              onReset={handleResetResult}
             />
           ))}
         </div>
@@ -151,15 +144,7 @@ export default function TablePage() {
   );
 }
 
-function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: { match: Match; isAdmin: boolean; savedResult: { home: number; away: number } | undefined; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
-  const [home, setHome] = useState(savedResult?.home ?? '');
-  const [away, setAway] = useState(savedResult?.away ?? '');
-
-  useEffect(() => {
-    setHome(savedResult?.home ?? '');
-    setAway(savedResult?.away ?? '');
-  }, [savedResult]);
-
+function ResultCard({ match, savedResult }: { match: Match; savedResult: { home: number; away: number } | undefined; }) {
   return (
     <div className="glass-dark p-6 rounded-[2rem] border-white/5 space-y-6">
       <div className="flex justify-between items-center">
@@ -179,25 +164,11 @@ function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: { match: M
         </div>
         
         <div className="flex items-center gap-2">
-          {isAdmin ? (
-            <div className="flex items-center gap-1">
-              <input 
-                type="number" value={home} onChange={(e) => setHome(e.target.value)}
-                className="w-10 h-10 bg-black/40 border border-white/10 rounded-lg text-center font-black text-sm text-white"
-              />
-              <span className="text-white/20">-</span>
-              <input 
-                type="number" value={away} onChange={(e) => setAway(e.target.value)}
-                className="w-10 h-10 bg-black/40 border border-white/10 rounded-lg text-center font-black text-sm text-white"
-              />
-            </div>
-          ) : (
-            <div className="bg-white/5 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-2">
-              <span className="text-lg font-black text-white">{savedResult?.home ?? '-'}</span>
-              <span className="text-white/20">-</span>
-              <span className="text-lg font-black text-white">{savedResult?.away ?? '-'}</span>
-            </div>
-          )}
+          <div className="bg-white/5 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-2">
+            <span className="text-lg font-black text-white">{savedResult?.home ?? '-'}</span>
+            <span className="text-white/20">-</span>
+            <span className="text-lg font-black text-white">{savedResult?.away ?? '-'}</span>
+          </div>
         </div>
 
         <div className="flex-1 flex flex-col items-center gap-2">
@@ -205,36 +176,11 @@ function ResultCard({ match, isAdmin, savedResult, onSave, onReset }: { match: M
           <span className="text-xs font-bold text-white text-center line-clamp-1">{match.awayTeam}</span>
         </div>
       </div>
-
-      {isAdmin && (
-        <div className="flex gap-2">
-          <button 
-            onClick={() => onSave(match.id, home, away)}
-            className="flex-1 py-3 bg-primary text-dark rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white transition-all"
-          >
-            <Save size={14} /> Salvar
-          </button>
-          <button 
-            onClick={() => onReset(match.id)}
-            className="px-4 py-3 bg-red-500/10 text-red-500 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all border border-red-500/10"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      )}
     </div>
   );
 }
 
-function ResultRow({ match, isAdmin, savedResult, onSave, onReset }: { match: Match; isAdmin: boolean; savedResult: { home: number; away: number } | undefined; onSave: (id: string, h: number|string, a: number|string) => void; onReset: (id: string) => void; }) {
-  const [home, setHome] = useState(savedResult?.home ?? '');
-  const [away, setAway] = useState(savedResult?.away ?? '');
-
-  useEffect(() => {
-    setHome(savedResult?.home ?? '');
-    setAway(savedResult?.away ?? '');
-  }, [savedResult]);
-
+function ResultRow({ match, savedResult }: { match: Match; savedResult: { home: number; away: number } | undefined; }) {
   return (
     <tr className="hover:bg-white/[0.02] transition-colors group">
       <td className="px-6 py-4">
@@ -251,29 +197,11 @@ function ResultRow({ match, isAdmin, savedResult, onSave, onReset }: { match: Ma
           </div>
           
           <div className="flex items-center justify-center gap-2 min-w-[110px]">
-            {isAdmin ? (
-              <>
-                <input 
-                  type="number" 
-                  value={home} 
-                  onChange={(e) => setHome(e.target.value)}
-                  className="w-12 h-10 bg-black/40 border border-white/10 rounded-lg text-center font-black focus:border-primary transition-all text-white"
-                />
-                <span className="text-white/20 font-black">-</span>
-                <input 
-                  type="number" 
-                  value={away} 
-                  onChange={(e) => setAway(e.target.value)}
-                  className="w-12 h-10 bg-black/40 border border-white/10 rounded-lg text-center font-black focus:border-primary transition-all text-white"
-                />
-              </>
-            ) : (
-              <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
-                <span className="text-xl font-black text-white">{savedResult?.home ?? '-'}</span>
-                <span className="text-white/20 font-bold">-</span>
-                <span className="text-xl font-black text-white">{savedResult?.away ?? '-'}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+              <span className="text-xl font-black text-white">{savedResult?.home ?? '-'}</span>
+              <span className="text-white/20 font-bold">-</span>
+              <span className="text-xl font-black text-white">{savedResult?.away ?? '-'}</span>
+            </div>
           </div>
 
           <div className="flex flex-col items-center gap-1.5 w-24 sm:w-28">
@@ -282,26 +210,6 @@ function ResultRow({ match, isAdmin, savedResult, onSave, onReset }: { match: Ma
           </div>
         </div>
       </td>
-      {isAdmin && (
-        <td className="px-6 py-4 text-right">
-          <div className="flex justify-end gap-2">
-            <button 
-              onClick={() => onSave(match.id, home, away)}
-              className="p-2.5 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-dark transition-all border border-primary/10"
-              title="Salvar"
-            >
-              <Save size={18} />
-            </button>
-            <button 
-              onClick={() => onReset(match.id)}
-              className="p-2.5 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/10"
-              title="Resetar"
-            >
-              <Trash2 size={18} />
-            </button>
-          </div>
-        </td>
-      )}
     </tr>
   );
 }
