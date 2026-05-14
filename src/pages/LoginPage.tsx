@@ -19,6 +19,11 @@ export function LoginPage() {
 
   // Priority redirect if user is already detected
   useEffect(() => {
+    // Ao entrar na tela de login, garantimos que qualquer resquício de demo seja limpo
+    if (localStorage.getItem('currentLeagueId') === '99999999-9999-9999-9999-999999999999') {
+      localStorage.removeItem('currentLeagueId');
+    }
+
     // Se estiver vindo de uma confirmação de e-mail ou recuperação de senha
     const hash = window.location.hash;
     if (hash.includes('type=signup') || hash.includes('type=recovery') || hash.includes('error=')) {

@@ -32,7 +32,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   // Caso especial para o Modo Demo (Visitante sem login)
-  const isDemoMode = localStorage.getItem('currentLeagueId') === '99999999-9999-9999-9999-999999999999';
+  // CRÍTICO: Só deve retornar o demoUser se estiver explicitamente na rota /demo
+  const isDemoPath = window.location.pathname.startsWith('/demo');
+  const isDemoMode = isDemoPath && localStorage.getItem('currentLeagueId') === '99999999-9999-9999-9999-999999999999';
+  
   const demoUser = useMemo(() => isDemoMode ? ({
     id: '00000000-0000-0000-0000-000000000000',
     email: 'visitante@demo.com',

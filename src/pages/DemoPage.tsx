@@ -25,15 +25,19 @@ export default function DemoPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('palpites');
   const [showConversionModal, setShowConversionModal] = useState(false);
+  const { currentLeagueId, setLeague } = useLeague();
 
-  // Forçar o ID da liga no localStorage para que os hooks das páginas usem a liga demo
+  // Forçar o ID da liga no mount para que os hooks das páginas usem a liga demo imediatamente
   useEffect(() => {
     const originalLeagueId = localStorage.getItem('currentLeagueId');
-    localStorage.setItem('currentLeagueId', DEMO_LEAGUE_ID);
+    
+    // Pequeno atraso para garantir que o contexto está pronto
+    setLeague(DEMO_LEAGUE_ID);
     
     return () => {
-      if (originalLeagueId) {
-        localStorage.setItem('currentLeagueId', originalLeagueId);
+      // Ao sair da página demo, restauramos a liga anterior (se houver)
+      if (originalLeagueId && originalLeagueId !== DEMO_LEAGUE_ID) {
+        setLeague(originalLeagueId);
       } else {
         localStorage.removeItem('currentLeagueId');
       }
@@ -48,6 +52,16 @@ export default function DemoPage() {
   ];
 
   const renderContent = () => {
+    // Garantir que não renderizamos o conteúdo real até que o ID da liga esteja setado corretamente
+    if (currentLeagueId !== DEMO_LEAGUE_ID) {
+      return (
+        <div className="flex flex-col items-center justify-center p-20 space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+          <p className="text-white/20 font-black uppercase tracking-widest text-[10px]">Preparando Experiência...</p>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'palpites': return <PredictionsPage />;
       case 'tabela': return <TablePage />;
@@ -55,6 +69,11 @@ export default function DemoPage() {
       case 'ranking': return <RankingPage />;
       default: return <PredictionsPage />;
     }
+  };
+
+  const handleExitDemo = () => {
+    localStorage.removeItem('currentLeagueId');
+    navigate('/');
   };
 
   return (
@@ -72,12 +91,20 @@ export default function DemoPage() {
               Você está no Modo Demonstração — Experimente todas as funcionalidades
             </span>
           </div>
-          <button 
-            onClick={() => setShowConversionModal(true)}
-            className="bg-dark text-white px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg"
-          >
-            Criar Minha Liga Real
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowConversionModal(true)}
+              className="bg-dark text-white px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg"
+            >
+              Criar Minha Liga Real
+            </button>
+            <button 
+              onClick={handleExitDemo}
+              className="bg-white/20 text-dark px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-white/30 transition-all"
+            >
+              Sair
+            </button>
+          </div>
         </motion.div>
       </div>
 
@@ -88,12 +115,18 @@ export default function DemoPage() {
           <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-2xl">
             <Trophy size={14} className="text-primary" />
             <span className="text-[10px] font-black uppercase tracking-widest text-white">
-              Liga Demo MestreCopa
+              Liga de Demonstração
             </span>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
+          <button 
+            onClick={handleExitDemo}
+            className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all mr-2"
+          >
+            Sair da Demo
+          </button>
           <div className="text-right hidden sm:block">
             <p className="text-[10px] font-black text-white uppercase tracking-tight">Visitante (Demo)</p>
             <p className="text-[8px] font-bold text-primary uppercase tracking-widest">Modo Teste</p>
