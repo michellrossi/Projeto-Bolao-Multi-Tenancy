@@ -63,6 +63,8 @@ export default function PredictionsPage() {
         data.forEach(p => predMap[p.match_id] = { home: p.home_score, away: p.away_score });
         setPredictions(predMap);
       }
+    };
+    
     fetchResults();
 
     // No modo demo sem usuário real, carregamos palpites do localStorage
