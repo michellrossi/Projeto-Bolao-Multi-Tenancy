@@ -51,8 +51,6 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-
-    // Carregar dados básicos apenas no primeiro carregamento para evitar sobrescrever edições em andamento
     if (isFirstLoad) {
       const name = user.user_metadata?.full_name || '';
       setDisplayName(name);
@@ -60,53 +58,64 @@ export default function ProfilePage() {
       setCurrentAvatar(user.user_metadata?.avatar_url || '');
       setIsFirstLoad(false);
     }
+  }, [user]);
 
-    // Carregar ligas
+  // Sincroniza com user sempre que ele mudar (inclusive após updateUser)
+  useEffect(() => {
+    if (!user) return;
+    const name = user.user_metadata?.full_name || user.email?.split('@')[0] || '';
+    const avatar = user.user_metadata?.avatar_url || '';
+    setDisplayName(name);
+    setInitialName(name);
+    setCurrentAvatar(avatar);
+  }, [user?.user_metadata?.full_name, user?.user_metadata?.avatar_url]);
+
+  // Carregar ligas — effect separado
+  useEffect(() => {
+    if (!user) return;
+    
     const fetchLeagues = async () => {
       try {
-        const { data, error } = await supabase
+        // Passo 1: buscar IDs das ligas do usuário
+        const { data: memberships, error: memErr } = await supabase
           .from('league_members')
-          .select(`
-            status,
-            created_at,
-            league_id,
-            leagues (
-              name,
-              owner_id,
-              created_at
-            )
-          `)
+          .select('league_id, status, created_at')
           .eq('user_id', user.id);
 
-        if (error) throw error;
+        if (memErr) throw memErr;
+        if (!memberships?.length) { setUserLeagues([]); return; }
 
-        if (data) {
-          const normalized: LeagueMemberRow[] = (data as any[]).map((item) => {
-            // Supabase pode retornar leagues como objeto ou array dependendo da versão/config
-            const leagueObj = Array.isArray(item.leagues) ? item.leagues[0] : item.leagues;
-            
-            if (!leagueObj) return null;
+        // Passo 2: buscar detalhes das ligas pelos IDs
+        const leagueIds = memberships.map(m => m.league_id);
+        const { data: leagues, error: lgErr } = await supabase
+          .from('leagues')
+          .select('id, name, owner_id, created_at')
+          .in('id', leagueIds);
 
-            const isOwnerOfLeague = leagueObj.owner_id === user.id;
-            
-            return {
-              created_at: item.created_at || leagueObj.created_at,
-              name: leagueObj.name || 'Liga Desconhecida',
-              status: isOwnerOfLeague ? 'Dono' : 
-                      item.status === 'approved' ? 'Aprovado' : 
-                      item.status === 'blocked' ? 'Bloqueado' : 'Pendente',
-              isOwner: isOwnerOfLeague
-            };
-          }).filter(Boolean) as LeagueMemberRow[];
-          
-          setUserLeagues(normalized);
-        }
+        if (lgErr) throw lgErr;
+
+        // Passo 3: combinar os dados
+        const normalized: LeagueMemberRow[] = memberships.map(m => {
+          const league = leagues?.find(l => l.id === m.league_id);
+          if (!league) return null;
+          return {
+            created_at: m.created_at,
+            name: league.name,
+            status: league.owner_id === user.id ? 'Dono'
+                  : m.status === 'approved' ? 'Aprovado'
+                  : m.status === 'blocked'  ? 'Bloqueado' : 'Pendente',
+            isOwner: league.owner_id === user.id,
+          };
+        }).filter(Boolean) as LeagueMemberRow[];
+
+        setUserLeagues(normalized);
       } catch (err) {
         console.error('Erro ao buscar ligas:', err);
       }
     };
+
     fetchLeagues();
-  }, [user]);
+  }, [user?.id]);
 
   if (!user) return null;
 
@@ -166,9 +175,8 @@ export default function ProfilePage() {
 
       if (dbErr) throw dbErr;
 
-      // Atualiza estados locais imediatamente
+      // Atualiza estados locais
       if (updateData.user) {
-        setCurrentAvatar(selectedAvatar);
         setSelectedAvatar('');
       }
       

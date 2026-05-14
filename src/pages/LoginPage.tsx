@@ -138,7 +138,13 @@ export function LoginPage() {
       <div className="absolute inset-0 bg-gradient-to-t from-dark via-dark/80 to-transparent z-[1]" />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-md px-6 py-12">
         <div className="glass-dark p-8 md:p-10 rounded-[3rem] shadow-2xl flex flex-col items-center border border-white/5">
-          <img src="https://iili.io/BZG2miP.png" alt="Bolão 2026" className="h-44 w-auto object-contain mb-4" />
+          <button
+            onClick={() => navigate('/')}
+            className="mb-4 transition-opacity hover:opacity-80 active:opacity-60 focus:outline-none"
+            aria-label="Voltar para a página inicial"
+          >
+            <img src="https://iili.io/BZG2miP.png" alt="MestreCopa" className="h-44 w-auto object-contain" />
+          </button>
           {error && (
             <div className={`w-full mb-6 p-4 border rounded-2xl text-xs font-bold text-center ${
               error.startsWith('✓') 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WORLD_CUP_2026_ROUNDS, Match } from '../lib/matches';
 import { KNOCKOUT_MATCHES } from '../lib/knockout';
@@ -20,12 +20,12 @@ export default function PredictionsPage() {
   const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
   const [loading, setLoading] = useState(true);
   const activeRound = WORLD_CUP_2026_ROUNDS.find(r => r.name === activeTab);
-  const standings = getGroupStandings(
+  const standings = useMemo(() => getGroupStandings(
     Object.entries(results).reduce((acc: Record<string, { homeScore: number; awayScore: number }>, [id, res]) => {
       acc[id] = { homeScore: res.home, awayScore: res.away };
       return acc;
     }, {})
-  );
+  ), [results]);
 
   useEffect(() => {
     if (!user || !currentLeagueId) return;

@@ -1,10 +1,17 @@
 import { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Trophy, Users, Shield, Zap, ArrowRight, Check, Star, LayoutGrid, BarChart3, MessageCircle, Sparkles, Instagram } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  // Redireciona usuário logado direto para o app
+  if (!loading && user) {
+    return <Navigate to="/app/palpites" replace />;
+  }
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -18,16 +25,16 @@ export default function LandingPage() {
       name: "Bronze",
       price: "47",
       participants: 25,
-      features: ["Até 25 participantes", "Ranking em tempo real", "Suporte via WhatsApp"],
-      popular: true,
+      features: ["Acesso vitalício", "Ranking em tempo real", "Até 25 participantes", "Suporte 24/7"],
+      popular: false,
       color: "from-orange-500/20 to-orange-500/5"
     },
     {
       name: "Prata",
       price: "97",
       participants: 50,
-      features: ["Até 50 participantes", "Ranking em tempo real", "Suporte via WhatsApp"],
-      popular: false,
+      features: ["Tudo do Bronze", "Até 50 participantes", "Personalização básica", "Badge de Fundador"],
+      popular: true,
       color: "from-primary/20 to-primary/5"
     },
     {
