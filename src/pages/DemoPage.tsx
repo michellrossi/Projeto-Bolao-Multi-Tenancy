@@ -18,6 +18,7 @@ import PredictionsPage from './PredictionsPage';
 import RankingPage from './RankingPage';
 import GroupsPage from './GroupsPage';
 import TablePage from './TablePage';
+import { useLeague } from '../hooks/useLeague';
 
 const DEMO_LEAGUE_ID = '99999999-9999-9999-9999-999999999999';
 
