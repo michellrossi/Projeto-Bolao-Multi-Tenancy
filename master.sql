@@ -65,6 +65,12 @@ begin
     max_leagues_allowed = 0, 
     max_participants_allowed = 0 
   where has_license = false and (max_leagues_allowed > 0 or max_participants_allowed > 0);
+
+  -- Sincroniza ligas antigas com o limite atual do plano do dono (Correção de Legado)
+  update public.leagues l
+  set max_participants = u.max_participants_allowed
+  from public.users u
+  where l.owner_id = u.id and l.max_participants <> u.max_participants_allowed;
 end $$;
 
 -- Notifica o PostgREST para recarregar o schema cache imediatamente

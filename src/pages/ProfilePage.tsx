@@ -48,14 +48,19 @@ export default function ProfilePage() {
   const [savedAvatar, setSavedAvatar] = useState(false);
   const [error, setError] = useState('');
 
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+
   useEffect(() => {
     if (!user) return;
 
-    // Carregar dados básicos
-    const name = user.user_metadata?.full_name || '';
-    setDisplayName(name);
-    setInitialName(name);
-    setCurrentAvatar(user.user_metadata?.avatar_url || '');
+    // Carregar dados básicos apenas no primeiro carregamento para evitar sobrescrever edições em andamento
+    if (isFirstLoad) {
+      const name = user.user_metadata?.full_name || '';
+      setDisplayName(name);
+      setInitialName(name);
+      setCurrentAvatar(user.user_metadata?.avatar_url || '');
+      setIsFirstLoad(false);
+    }
 
     // Carregar ligas
     const fetchLeagues = async () => {
@@ -78,18 +83,23 @@ export default function ProfilePage() {
 
         if (data) {
           const normalized: LeagueMemberRow[] = (data as any[]).map((item) => {
+            // Supabase pode retornar leagues como objeto ou array dependendo da versão/config
             const leagueObj = Array.isArray(item.leagues) ? item.leagues[0] : item.leagues;
-            const isOwnerOfLeague = leagueObj?.owner_id === user.id;
+            
+            if (!leagueObj) return null;
+
+            const isOwnerOfLeague = leagueObj.owner_id === user.id;
             
             return {
-              created_at: item.created_at || leagueObj?.created_at,
-              name: leagueObj?.name || 'Liga Desconhecida',
+              created_at: item.created_at || leagueObj.created_at,
+              name: leagueObj.name || 'Liga Desconhecida',
               status: isOwnerOfLeague ? 'Dono' : 
                       item.status === 'approved' ? 'Aprovado' : 
                       item.status === 'blocked' ? 'Bloqueado' : 'Pendente',
               isOwner: isOwnerOfLeague
             };
-          });
+          }).filter(Boolean) as LeagueMemberRow[];
+          
           setUserLeagues(normalized);
         }
       } catch (err) {
@@ -111,9 +121,11 @@ export default function ProfilePage() {
 
     try {
       // Atualiza metadata do Auth
-      await supabase.auth.updateUser({
+      const { data: updateData, error: authErr } = await supabase.auth.updateUser({
         data: { full_name: displayName },
       });
+
+      if (authErr) throw authErr;
 
       // Atualiza tabela `users`
       const { error: dbErr } = await supabase
@@ -123,7 +135,11 @@ export default function ProfilePage() {
 
       if (dbErr) throw dbErr;
 
-      setInitialName(displayName);
+      // Força atualização local do avatar/nome caso o hook de auth demore
+      if (updateData.user) {
+        setInitialName(displayName);
+      }
+
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err: unknown) {
@@ -138,9 +154,11 @@ export default function ProfilePage() {
     setSavingAvatar(true);
 
     try {
-      await supabase.auth.updateUser({
+      const { data: updateData, error: authErr } = await supabase.auth.updateUser({
         data: { avatar_url: selectedAvatar },
       });
+
+      if (authErr) throw authErr;
 
       const { error: dbErr } = await supabase
         .from('users')
@@ -149,8 +167,12 @@ export default function ProfilePage() {
 
       if (dbErr) throw dbErr;
 
-      setCurrentAvatar(selectedAvatar);
-      setSelectedAvatar('');
+      // Atualiza estados locais imediatamente
+      if (updateData.user) {
+        setCurrentAvatar(selectedAvatar);
+        setSelectedAvatar('');
+      }
+      
       setSavedAvatar(true);
       setTimeout(() => setSavedAvatar(false), 3000);
     } catch (err) {
