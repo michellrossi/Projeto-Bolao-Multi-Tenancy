@@ -36,6 +36,15 @@ export default function PredictionsPage() {
       if (data) {
         const resMap: Record<string, { home: number; away: number }> = {};
         data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score });
+        
+        // Fallback demo results se o banco estiver vazio
+        const isDemo = currentLeagueId === '99999999-9999-9999-9999-999999999999';
+        if (isDemo && Object.keys(resMap).length === 0) {
+          resMap['g1-1'] = { home: 2, away: 0 };
+          resMap['g1-2'] = { home: 1, away: 1 };
+          resMap['g2-1'] = { home: 3, away: 0 };
+        }
+        
         setResults(resMap);
       }
     };

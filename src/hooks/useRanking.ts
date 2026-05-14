@@ -48,7 +48,9 @@ export function useRanking(leagueId: string | null) {
 
       // Fallback para a Liga Demo caso o banco esteja vazio
       let finalMembers = membersData as LeagueMember[] ?? [];
-      if (leagueId === '99999999-9999-9999-9999-999999999999' && finalMembers.length === 0) {
+      const isDemo = leagueId === '99999999-9999-9999-9999-999999999999';
+      
+      if (isDemo && finalMembers.length === 0) {
         finalMembers = [
           { user_id: 'd1', users: { id: 'd1', display_name: 'Carlos Silva', photo_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Carlos' } },
           { user_id: 'd2', users: { id: 'd2', display_name: 'Marina Ruy', photo_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Marina' } },
@@ -64,6 +66,20 @@ export function useRanking(leagueId: string | null) {
         allPredictions[p.user_id][p.match_id] = { home: p.home_score, away: p.away_score };
       });
 
+      // Mock predictions for demo fallback
+      if (isDemo && Object.keys(allPredictions).length === 0) {
+        allPredictions['d1'] = { 'g1-1': { home: 2, away: 0 }, 'g1-2': { home: 1, away: 1 } };
+        allPredictions['d2'] = { 'g1-1': { home: 1, away: 0 }, 'g1-2': { home: 2, away: 2 } };
+        allPredictions['d3'] = { 'g1-1': { home: 0, away: 0 }, 'g1-2': { home: 1, away: 1 } };
+        allPredictions['d4'] = { 'g1-1': { home: 2, away: 1 }, 'g1-2': { home: 0, away: 0 } };
+      }
+
+      const finalResultsMap = { ...resultsMap };
+      if (isDemo && Object.keys(finalResultsMap).length === 0) {
+        finalResultsMap['g1-1'] = { home: 2, away: 0 };
+        finalResultsMap['g1-2'] = { home: 1, away: 1 };
+      }
+
       // 5. Cálculo de pontos + tendência
       const rankingList: UserRanking[] = finalMembers.map(member => {
         const profile = member.users;
@@ -72,7 +88,7 @@ export function useRanking(leagueId: string | null) {
 
         let totalPoints = 0;
         Object.entries(userPreds).forEach(([matchId, pred]) => {
-          const result = resultsMap[matchId];
+          const result = finalResultsMap[matchId];
           if (result) {
             totalPoints += calculatePoints(
               { homeScore: pred.home, awayScore: pred.away },
