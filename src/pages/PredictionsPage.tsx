@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WORLD_CUP_2026_ROUNDS, Match } from '../lib/matches';
 import { KNOCKOUT_MATCHES } from '../lib/knockout';
@@ -27,17 +27,15 @@ export default function PredictionsPage() {
     }, {})
   ), [results]);
 
-  useEffect(() => {
-    if (!user || !currentLeagueId) return;
-
-    // Fetch results
-    const fetchResults = async () => {
+  // Fetch results
+  const fetchResults = useCallback(async () => {
+    try {
       const { data } = await supabase.from('results').select('*').range(0, 199);
       if (data) {
         const resMap: Record<string, { home: number; away: number }> = {};
         data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score });
         
-        // Fallback demo results se o banco estiver vazio
+        // Fallback demo results
         const isDemo = currentLeagueId === '99999999-9999-9999-9999-999999999999';
         if (isDemo && Object.keys(resMap).length === 0) {
           resMap['g1-1'] = { home: 2, away: 0 };
@@ -47,64 +45,70 @@ export default function PredictionsPage() {
         
         setResults(resMap);
       }
-    };
-
-    // Fetch predictions
-    const fetchPredictions = async () => {
-      const { data } = await supabase
-        .from('predictions')
-        .select('*')
-        .eq('league_id', currentLeagueId)
-        .eq('user_id', user.id)
-        .range(0, 199); // Limite de payload
-
-      if (data) {
-        const predMap: Record<string, { home: number; away: number }> = {};
-        data.forEach(p => predMap[p.match_id] = { home: p.home_score, away: p.away_score });
-        setPredictions(predMap);
-      }
-    };
-    
-    fetchResults();
-
-    // No modo demo sem usuário real, carregamos palpites do localStorage
-    const isDemo = currentLeagueId === '99999999-9999-9999-9999-999999999999';
-    if (isDemo && (!user || user.id === '00000000-0000-0000-0000-000000000000')) {
-      const localPreds = localStorage.getItem(`demo_predictions_${currentLeagueId}`);
-      if (localPreds) {
-        setPredictions(JSON.parse(localPreds));
-      }
-      setLoading(false);
-    } else {
-      fetchPredictions();
+    } finally {
+      // Resultados são rápidos, mas não marcam fim do loading total
     }
+  }, [currentLeagueId]);
 
-    // Subscribe to results changes
+  // Fetch predictions
+  const fetchPredictions = useCallback(async () => {
+    if (!user || !currentLeagueId) return;
+    
+    setLoading(true);
+    try {
+      // Modo demo com usuário fake -> localStorage
+      const isDemo = currentLeagueId === '99999999-9999-9999-9999-999999999999';
+      if (isDemo && (!user || user.id === '00000000-0000-0000-0000-000000000000')) {
+        const localPreds = localStorage.getItem(`demo_predictions_${currentLeagueId}`);
+        if (localPreds) {
+          setPredictions(JSON.parse(localPreds));
+        }
+      } else {
+        const { data } = await supabase
+          .from('predictions')
+          .select('*')
+          .eq('league_id', currentLeagueId)
+          .eq('user_id', user.id)
+          .range(0, 199);
+
+        if (data) {
+          const predMap: Record<string, { home: number; away: number }> = {};
+          data.forEach(p => predMap[p.match_id] = { home: p.home_score, away: p.away_score });
+          setPredictions(predMap);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id, currentLeagueId]);
+
+  useEffect(() => {
+    if (!user || !currentLeagueId) return;
+
+    fetchResults();
+    fetchPredictions();
+
+    // Subscriptions
     const resultsSub = supabase
-      .channel('results_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'results' }, () => {
-        fetchResults();
-      })
+      .channel(`results_${currentLeagueId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'results' }, fetchResults)
       .subscribe();
 
-    // Subscribe to predictions changes for this user
     const predsSub = supabase
-      .channel('predictions_changes')
+      .channel(`preds_${currentLeagueId}_${user.id}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'predictions',
         filter: `user_id=eq.${user.id}`
-      }, () => {
-        fetchPredictions();
-      })
+      }, fetchPredictions)
       .subscribe();
 
     return () => {
       resultsSub.unsubscribe();
       predsSub.unsubscribe();
     };
-  }, [user, currentLeagueId]);
+  }, [user?.id, currentLeagueId, fetchResults, fetchPredictions]);
 
   const handleSavePrediction = async (matchId: string, home: number, away: number) => {
     if (!user || !isApproved || !currentLeagueId) return;

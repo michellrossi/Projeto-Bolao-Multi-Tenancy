@@ -76,6 +76,18 @@ export default function ProfilePage() {
     
     const fetchLeagues = async () => {
       try {
+        // Caso especial: Modo Demo (Visitante)
+        const isDemo = user.id === '00000000-0000-0000-0000-000000000000';
+        if (isDemo) {
+          setUserLeagues([{
+            created_at: new Date().toISOString(),
+            name: 'Liga de Demonstração (MestreCopa)',
+            status: 'Aprovado',
+            isOwner: false
+          }]);
+          return;
+        }
+
         // Passo 1: buscar IDs das ligas do usuário
         const { data: memberships, error: memErr } = await supabase
           .from('league_members')
@@ -99,7 +111,7 @@ export default function ProfilePage() {
           const league = leagues?.find(l => l.id === m.league_id);
           if (!league) return null;
           return {
-            created_at: m.created_at,
+            created_at: m.created_at || league.created_at,
             name: league.name,
             status: league.owner_id === user.id ? 'Dono'
                   : m.status === 'approved' ? 'Aprovado'
