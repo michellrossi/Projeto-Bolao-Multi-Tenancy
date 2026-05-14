@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
@@ -142,27 +143,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+const DEMO_USER = {
+  id: '00000000-0000-0000-0000-000000000000',
+  email: 'visitante@demo.com',
+  user_metadata: { full_name: 'Visitante (Demo)', avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo' }
+} as any;
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
+  const location = useLocation();
   
   // Lógica reativa para o Modo Demo — Calculada em cada chamada do hook
-  const isDemoPath = window.location.pathname.startsWith('/demo');
-  const isDemoMode = isDemoPath && localStorage.getItem('currentLeagueId') === '99999999-9999-9999-9999-999999999999';
+  // Usamos useMemo para evitar que o objeto retornado mude em todo render (evita loops infinitos)
+  return useMemo(() => {
+    const isDemoPath = location.pathname.startsWith('/demo');
+    const isDemoMode = isDemoPath && localStorage.getItem('currentLeagueId') === '99999999-9999-9999-9999-999999999999';
 
-  if (isDemoMode && !context.user) {
-    return {
-      ...context,
-      user: {
-        id: '00000000-0000-0000-0000-000000000000',
-        email: 'visitante@demo.com',
-        user_metadata: { full_name: 'Visitante (Demo)', avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo' }
-      } as any,
-      isApproved: true,
-      hasLicense: true,
-      maxLeaguesAllowed: 1,
-      maxParticipantsAllowed: 100,
-    };
-  }
-
-  return context;
+    if (isDemoMode && !context.user) {
+      return {
+        ...context,
+        user: DEMO_USER,
+        isApproved: true,
+        hasLicense: true,
+        maxLeaguesAllowed: 1,
+        maxParticipantsAllowed: 100,
+      };
+    }
+    return context;
+  }, [context, location.pathname]); 
 };
