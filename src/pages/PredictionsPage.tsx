@@ -54,11 +54,19 @@ export default function PredictionsPage() {
         data.forEach(p => predMap[p.match_id] = { home: p.home_score, away: p.away_score });
         setPredictions(predMap);
       }
-      setLoading(false);
-    };
-
     fetchResults();
-    fetchPredictions();
+
+    // No modo demo sem usuário real, carregamos palpites do localStorage
+    const isDemo = currentLeagueId === '99999999-9999-9999-9999-999999999999';
+    if (isDemo && (!user || user.id === '00000000-0000-0000-0000-000000000000')) {
+      const localPreds = localStorage.getItem(`demo_predictions_${currentLeagueId}`);
+      if (localPreds) {
+        setPredictions(JSON.parse(localPreds));
+      }
+      setLoading(false);
+    } else {
+      fetchPredictions();
+    }
 
     // Subscribe to results changes
     const resultsSub = supabase
@@ -90,6 +98,15 @@ export default function PredictionsPage() {
   const handleSavePrediction = async (matchId: string, home: number, away: number) => {
     if (!user || !isApproved || !currentLeagueId) return;
     try {
+      // Se for modo demo, salvamos localmente para interatividade imediata
+      const isDemo = currentLeagueId === '99999999-9999-9999-9999-999999999999';
+      if (isDemo && (!user || user.id === '00000000-0000-0000-0000-000000000000')) {
+        const newPreds = { ...predictions, [matchId]: { home, away } };
+        setPredictions(newPreds);
+        localStorage.setItem(`demo_predictions_${currentLeagueId}`, JSON.stringify(newPreds));
+        return;
+      }
+
       const { error } = await supabase
         .from('predictions')
         .upsert({

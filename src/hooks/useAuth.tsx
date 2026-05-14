@@ -33,11 +33,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Caso especial para o Modo Demo (Visitante sem login)
   const isDemoMode = localStorage.getItem('currentLeagueId') === '99999999-9999-9999-9999-999999999999';
-  const demoUser = isDemoMode ? {
+  const demoUser = useMemo(() => isDemoMode ? ({
     id: '00000000-0000-0000-0000-000000000000',
     email: 'visitante@demo.com',
     user_metadata: { full_name: 'Visitante (Demo)', avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo' }
-  } as User : null;
+  } as User) : null, [isDemoMode]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

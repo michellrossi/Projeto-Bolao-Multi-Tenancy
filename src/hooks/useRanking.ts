@@ -46,6 +46,18 @@ export function useRanking(leagueId: string | null) {
         .select('user_id, match_id, home_score, away_score')
         .eq('league_id', leagueId);
 
+      // Fallback para a Liga Demo caso o banco esteja vazio
+      let finalMembers = membersData as LeagueMember[] ?? [];
+      if (leagueId === '99999999-9999-9999-9999-999999999999' && finalMembers.length === 0) {
+        finalMembers = [
+          { user_id: 'd1', users: { id: 'd1', display_name: 'Carlos Silva', photo_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Carlos' } },
+          { user_id: 'd2', users: { id: 'd2', display_name: 'Marina Ruy', photo_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Marina' } },
+          { user_id: 'd3', users: { id: 'd3', display_name: 'Roberto Baggio', photo_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Roberto' } },
+          { user_id: 'd4', users: { id: 'd4', display_name: 'Ana Clara', photo_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Ana' } },
+          { user_id: 'd5', users: { id: 'd5', display_name: 'Bruno Gagliasso', photo_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Bruno' } }
+        ] as any;
+      }
+
       const allPredictions: PredictionsMap = {};
       predsData?.forEach(p => {
         if (!allPredictions[p.user_id]) allPredictions[p.user_id] = {};
@@ -53,7 +65,7 @@ export function useRanking(leagueId: string | null) {
       });
 
       // 5. Cálculo de pontos + tendência
-      const rankingList: UserRanking[] = (membersData as LeagueMember[] ?? []).map(member => {
+      const rankingList: UserRanking[] = finalMembers.map(member => {
         const profile = member.users;
         const userId = profile.id;
         const userPreds = allPredictions[userId] ?? {};
