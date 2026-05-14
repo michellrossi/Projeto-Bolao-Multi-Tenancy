@@ -23,23 +23,23 @@ export default function LandingPage() {
   const plans = [
     {
       name: "Bronze",
-      price: "47",
+      price: "19,90",
       participants: 25,
-      features: ["Acesso vitalício", "Ranking em tempo real", "Até 25 participantes", "Suporte 24/7"],
+      features: ["Até 25 participantes", "Ranking em tempo real", "Suporte 24/07"],
       popular: false,
       color: "from-orange-500/20 to-orange-500/5"
     },
     {
       name: "Prata",
-      price: "97",
+      price: "39,90",
       participants: 50,
-      features: ["Tudo do Bronze", "Até 50 participantes", "Personalização básica", "Badge de Fundador"],
+      features: ["Até 50 participantes", "Ranking em tempo real", "Suporte 24/07"],
       popular: true,
       color: "from-primary/20 to-primary/5"
     },
     {
       name: "Ouro",
-      price: "147",
+      price: "79,90",
       participants: 100,
       features: ["Até 100 participantes", "Ranking em tempo real", "Suporte Prioritário"],
       popular: false,
