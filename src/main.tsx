@@ -16,6 +16,7 @@ import ProfilePage from './pages/ProfilePage';
 import TermosPage from './pages/TermosPage';
 import PrivacidadePage from './pages/PrivacidadePage';
 import AdminResultsPage from './pages/AdminResultsPage';
+import DemoPage from './pages/DemoPage';
 import { AuthProvider } from './hooks/useAuth';
 import { LeagueProvider } from './hooks/useLeague';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
   {
     path: '/checkout',
     element: <CheckoutPage />,
+  },
+  {
+    path: '/demo',
+    element: <DemoPage />,
   },
   {
     path: '/login',

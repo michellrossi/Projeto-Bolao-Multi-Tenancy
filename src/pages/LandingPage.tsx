@@ -53,6 +53,12 @@ export default function LandingPage() {
             Entrar
           </button>
           <button
+            onClick={() => navigate('/demo')}
+            className="hidden sm:block text-xs font-black uppercase tracking-widest text-primary hover:text-white transition-colors"
+          >
+            Ver Demonstração
+          </button>
+          <button
             onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
             className="px-6 py-2.5 bg-primary text-dark font-black text-xs uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg glow-primary"
           >
@@ -107,10 +113,11 @@ export default function LandingPage() {
               Criar meu Bolão <ArrowRight size={20} />
             </button>
             <button
-              onClick={() => navigate('/login')}
-              className="w-full sm:w-auto px-10 py-5 bg-white/5 text-white font-black rounded-2xl uppercase tracking-widest text-sm border border-white/10 hover:bg-white/10 transition-all"
+              onClick={() => navigate('/demo')}
+              className="w-full sm:w-auto px-10 py-5 bg-white/5 text-white font-black rounded-2xl uppercase tracking-widest text-sm border border-white/10 hover:bg-white/10 transition-all flex items-center justify-center gap-2 group"
             >
-              Entrar em um Bolão
+              <Sparkles size={18} className="text-primary group-hover:animate-pulse" />
+              Ver Demonstração
             </button>
           </motion.div>
         </div>

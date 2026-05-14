@@ -29,6 +29,14 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Caso especial: Liga de Demonstração (Sempre aprovada)
+    if (currentLeagueId === '99999999-9999-9999-9999-999999999999') {
+      setIsApproved(true);
+      setIsOwner(false);
+      setLoading(false);
+      return;
+    }
+
     // Se não há usuário ou liga, reseta tudo imediatamente
     if (!user || !currentLeagueId) {
       setIsApproved(false);

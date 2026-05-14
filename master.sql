@@ -424,3 +424,35 @@ create index if not exists idx_league_members_league_id on league_members(league
 create index if not exists idx_predictions_league_user on predictions(league_id, user_id);
 create index if not exists idx_leagues_invite_code on leagues(invite_code);
 create index if not exists idx_leagues_owner_id on leagues(owner_id);
+
+-- 9. Setup da Liga de Demonstração (Demo League)
+-- Garantir permissão de leitura pública na liga de demonstração para atrair e converter clientes
+drop policy if exists "Permitir leitura publica da liga demo" on leagues;
+create policy "Permitir leitura publica da liga demo" on leagues
+  for select using (id = '99999999-9999-9999-9999-999999999999');
+
+drop policy if exists "Permitir leitura publica dos membros da liga demo" on league_members;
+create policy "Permitir leitura publica dos membros da liga demo" on league_members
+  for select using (league_id = '99999999-9999-9999-9999-999999999999');
+
+drop policy if exists "Permitir leitura publica dos palpites da liga demo" on predictions;
+create policy "Permitir leitura publica dos palpites da liga demo" on predictions
+  for select using (league_id = '99999999-9999-9999-9999-999999999999');
+
+-- Bloco para semear a liga de demonstração estática
+do $$
+declare
+  demo_owner_id uuid := '00000000-0000-0000-0000-000000000001';
+  demo_league_id uuid := '99999999-9999-9999-9999-999999999999';
+begin
+  -- Criar usuário dono fictício se não existir
+  insert into public.users (id, email, display_name, photo_url)
+  values (demo_owner_id, 'demo.admin@mestrecopa.com.br', 'MestreCopa (Oficial)', 'https://api.dicebear.com/7.x/bottts/svg?seed=MestreCopa')
+  on conflict do nothing;
+
+  -- Inserir a liga demo
+  insert into public.leagues (id, name, invite_code, owner_id, max_participants)
+  values (demo_league_id, '🏆 Bolão de Demonstração', 'DEMO2026', demo_owner_id, 100)
+  on conflict (id) do nothing;
+end;
+$$;

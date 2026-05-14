@@ -31,6 +31,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [maxParticipantsAllowed, setMaxParticipantsAllowed] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // Caso especial para o Modo Demo (Visitante sem login)
+  const isDemoMode = localStorage.getItem('currentLeagueId') === '99999999-9999-9999-9999-999999999999';
+  const demoUser = isDemoMode ? {
+    id: '00000000-0000-0000-0000-000000000000',
+    email: 'visitante@demo.com',
+    user_metadata: { full_name: 'Visitante (Demo)', avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo' }
+  } as User : null;
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleUserChange(session?.user ?? null);
@@ -126,13 +134,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{
-      user,
+      user: user || demoUser,
       loading,
-      isAdmin,
-      isApproved,
-      hasLicense,
-      maxLeaguesAllowed,
-      maxParticipantsAllowed,
+      isAdmin: isDemoMode ? false : isAdmin,
+      isApproved: isDemoMode ? true : isApproved,
+      hasLicense: isDemoMode ? true : hasLicense,
+      maxLeaguesAllowed: isDemoMode ? 1 : maxLeaguesAllowed,
+      maxParticipantsAllowed: isDemoMode ? 100 : maxParticipantsAllowed,
     }}>
       {children}
     </AuthContext.Provider>
