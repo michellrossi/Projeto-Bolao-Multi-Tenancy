@@ -178,7 +178,6 @@ export default function PredictionsPage() {
             const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx - 1].group !== match.group);
 
             return (
-            return (
               <>
                 {showPhase && (
                   <div className="md:col-span-2">
@@ -194,7 +193,6 @@ export default function PredictionsPage() {
                   onSave={handleSavePrediction}
                 />
               </>
-            );
             );
           })}
         </motion.div>
