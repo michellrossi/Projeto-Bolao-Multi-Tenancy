@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Trophy, Users, Shield, Zap, ArrowRight, Check, Star, LayoutGrid, BarChart3, MessageCircle, Instagram } from 'lucide-react';
+import { Trophy, Users, Shield, Zap, ArrowRight, Check, Star, LayoutGrid, BarChart3, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function LandingPage() {
@@ -34,7 +34,7 @@ export default function LandingPage() {
       name: "Ouro",
       price: "147",
       participants: 100,
-      features: ["Até 100 participantes", "Suporte Prioritário", "Acesso vitalício"],
+      features: ["Até 100 participantes", "Ranking em tempo real", "Suporte Prioritário"],
       popular: false,
       color: "from-yellow-500/20 to-yellow-500/5"
     }
@@ -120,7 +120,7 @@ export default function LandingPage() {
       <section className="py-24 px-6 max-w-5xl mx-auto">
         <div className="grid md:grid-cols-3 gap-8">
           {[
-            { icon: LayoutGrid, title: "Ligas Privadas", desc: "Crie grupos exclusivos e gerencie quem pode ver os palpites." },
+            { icon: LayoutGrid, title: "Multi-Tenancy", desc: "Crie várias ligas independentes com um único código de acesso." },
             { icon: BarChart3, title: "Ranking Live", desc: "Cálculo de pontos instantâneo e ranking dinâmico pós-jogo." },
             { icon: Shield, title: "Gestão Total", desc: "Aprove ou bloqueie participantes. Você é o dono da arena." },
             { icon: Zap, title: "Performance", desc: "Interface ultra-rápida pensada para mobile e web." },
@@ -209,11 +209,9 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="flex gap-8">
-            <a href="https://instagram.com/mestrecopa" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-primary transition-colors">
-              <Instagram />
-            </a>
             <a href="#" className="text-white/40 hover:text-primary transition-colors"><MessageCircle /></a>
             <a href="#" className="text-white/40 hover:text-primary transition-colors"><Star /></a>
+            <a href="#" className="text-white/40 hover:text-primary transition-colors"><Zap /></a>
           </div>
         </div>
       </footer>
