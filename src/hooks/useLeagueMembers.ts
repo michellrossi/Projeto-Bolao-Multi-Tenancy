@@ -32,7 +32,7 @@ export function useLeagueMembers(leagueId: string | null) {
       // Liga (owner + dados)
       const { data: league } = await supabase
         .from('leagues')
-        .select('name, owner_id')
+        .select('name, owner_id, max_participants')
         .eq('id', leagueId)
         .maybeSingle();
 
