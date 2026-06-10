@@ -18,8 +18,9 @@ export default function RulesPage() {
       title: "Prazos de Envio",
       desc: "O sistema de palpites possui regras rígidas de horário.",
       points: [
-        { label: "Trava do Sistema", value: "30 min", detail: "Palpites fecham 30 minutos antes do início real de cada partida." },
-        { label: "Alterações", value: "Ilimitadas", detail: "Você pode mudar seu palpite quantas vezes quiser até o momento da trava." }
+        { label: "Trava: Fase de Grupos", value: "30 min", detail: "Todos os palpites fecham 30 min ANTES do 1º jogo da Copa." },
+        { label: "Trava: Mata-Mata", value: "30 min", detail: "Palpites fecham 30 min antes do início de cada partida." },
+        { label: "Alterações", value: "Ilimitadas", detail: "Mude seus palpites quantas vezes quiser até o momento da respectiva trava." }
       ]
     },
     {

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useLeague } from '../hooks/useLeague';
-import { Plus, Users, LogIn, Shield, Trophy, ArrowRight, Trash2, LogOut } from 'lucide-react';
+import { Plus, Users, LogIn, Shield, Trophy, ArrowRight, Trash2, LogOut, Edit2 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { useNavigate } from 'react-router-dom';
 
@@ -40,7 +40,9 @@ export default function LeaguesPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [editingLeague, setEditingLeague] = useState<League | null>(null);
   const [leagueName, setLeagueName] = useState('');
+  const [editLeagueName, setEditLeagueName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -279,6 +281,32 @@ export default function LeaguesPage() {
     });
   };
 
+  const handleEditLeague = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editLeagueName.trim() || !editingLeague) return;
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const { error: updateError } = await supabase
+        .from('leagues')
+        .update({ name: editLeagueName })
+        .eq('id', editingLeague.id);
+
+      if (updateError) throw updateError;
+
+      setLeagues(prev => prev.map(l => l.id === editingLeague.id ? { ...l, name: editLeagueName } : l));
+      setEditingLeague(null);
+      setEditLeagueName('');
+    } catch (err: unknown) {
+      console.error("Error updating league:", err);
+      setError('Erro ao atualizar o nome da liga. Tente novamente.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
 
   return (
@@ -396,6 +424,15 @@ export default function LeaguesPage() {
                   >
                     {league.is_owner ? <Trash2 size={16} /> : <LogOut size={16} />}
                   </button>
+                  {league.is_owner && (
+                    <button
+                      onClick={() => { setEditingLeague(league); setEditLeagueName(league.name); }}
+                      title="Editar nome da liga"
+                      className="p-3 rounded-xl border border-white/10 text-white/30 hover:text-white/60 transition-all hover:bg-white/5"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -501,6 +538,53 @@ export default function LeaguesPage() {
                   className="w-full py-4 bg-secondary text-dark font-black rounded-2xl uppercase tracking-widest text-sm hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                 >
                   {submitting ? 'Verificando...' : 'Entrar no Bolão'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {editingLeague && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingLeague(null)}
+              className="absolute inset-0 bg-dark/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md glass-dark p-8 rounded-[3rem] border border-white/10 shadow-2xl"
+            >
+              <h2 className="text-2xl font-black text-white uppercase mb-6">Editar Nome da Liga</h2>
+              <form onSubmit={handleEditLeague} className="space-y-6">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-4 mb-2 block">
+                    Novo Nome
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editLeagueName}
+                    onChange={(e) => setEditLeagueName(e.target.value)}
+                    placeholder="Ex: Bolão da Firma, Amigos..."
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold focus:outline-none focus:border-primary transition-all"
+                  />
+                </div>
+
+                {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-4 bg-primary text-dark font-black rounded-2xl uppercase tracking-widest text-sm hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {submitting ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
               </form>
             </motion.div>
