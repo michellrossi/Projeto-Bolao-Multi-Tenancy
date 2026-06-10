@@ -18,7 +18,10 @@ export default function PredictionsPage() {
   const [activeTab, setActiveTab] = useState("1ª Rodada");
   const [predictions, setPredictions] = useState<Record<string, { home: number; away: number }>>({});
   const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
-  const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState<Record<string, { home: string; away: string }>>({});
+  const [savingActive, setSavingActive] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  
   const activeRound = WORLD_CUP_2026_ROUNDS.find(r => r.name === activeTab);
   const standings = useMemo(() => getGroupStandings(
     Object.entries(results).reduce((acc: Record<string, { homeScore: number; awayScore: number }>, [id, res]) => {
@@ -45,9 +48,7 @@ export default function PredictionsPage() {
         
         setResults(resMap);
       }
-    } finally {
-      // Resultados são rápidos, mas não marcam fim do loading total
-    }
+    } finally {}
   }, [currentLeagueId]);
 
   // Fetch predictions
@@ -61,7 +62,8 @@ export default function PredictionsPage() {
       if (isDemo && (!user || user.id === '00000000-0000-0000-0000-000000000000')) {
         const localPreds = localStorage.getItem(`demo_predictions_${currentLeagueId}`);
         if (localPreds) {
-          setPredictions(JSON.parse(localPreds));
+          const parsed = JSON.parse(localPreds);
+          setPredictions(parsed);
         }
       } else {
         const { data } = await supabase
@@ -110,34 +112,71 @@ export default function PredictionsPage() {
     };
   }, [user?.id, currentLeagueId, fetchResults, fetchPredictions]);
 
-  const handleSavePrediction = async (matchId: string, home: number, away: number) => {
+  const handleDraftChange = (matchId: string, team: 'home' | 'away', value: string) => {
+    setDrafts(prev => ({
+      ...prev,
+      [matchId]: {
+        home: team === 'home' ? value : (prev[matchId]?.home ?? predictions[matchId]?.home?.toString() ?? ''),
+        away: team === 'away' ? value : (prev[matchId]?.away ?? predictions[matchId]?.away?.toString() ?? ''),
+      }
+    }));
+  };
+
+  const handleSaveAll = async () => {
     if (!user || !isApproved || !currentLeagueId) return;
+    setSavingActive(true);
+    setSaveSuccess(false);
+
     try {
-      // Se for modo demo, salvamos localmente para interatividade imediata
       const isDemo = currentLeagueId === '99999999-9999-9999-9999-999999999999';
-      if (isDemo && (!user || user.id === '00000000-0000-0000-0000-000000000000')) {
-        const newPreds = { ...predictions, [matchId]: { home, away } };
+      
+      if (isDemo && user.id === '00000000-0000-0000-0000-000000000000') {
+        const newPreds = { ...predictions };
+        Object.entries(drafts).forEach(([matchId, draft]) => {
+          if (draft.home !== '' && draft.away !== '') {
+            newPreds[matchId] = { home: Number(draft.home), away: Number(draft.away) };
+          }
+        });
         setPredictions(newPreds);
         localStorage.setItem(`demo_predictions_${currentLeagueId}`, JSON.stringify(newPreds));
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
         return;
       }
 
-      const { error } = await supabase
-        .from('predictions')
-        .upsert({
+      const toUpsert = Object.entries(drafts)
+        .filter(([_, draft]) => draft.home !== '' && draft.away !== '')
+        .map(([matchId, draft]) => ({
           league_id: currentLeagueId,
           user_id: user.id,
           match_id: matchId,
-          home_score: home,
-          away_score: away,
+          home_score: Number(draft.home),
+          away_score: Number(draft.away),
           updated_at: new Date().toISOString()
-        }, { onConflict: 'league_id,user_id,match_id' });
+        }));
 
+      if (toUpsert.length === 0) {
+        setSavingActive(false);
+        return;
+      }
+
+      const { error } = await supabase.from('predictions').upsert(toUpsert, { onConflict: 'league_id,user_id,match_id' });
       if (error) throw error;
 
-      setPredictions(prev => ({ ...prev, [matchId]: { home, away } }));
+      // Update local predictions so they reflect what was saved
+      const newPreds = { ...predictions };
+      toUpsert.forEach(p => {
+        newPreds[p.match_id] = { home: p.home_score, away: p.away_score };
+      });
+      setPredictions(newPreds);
+
+      // Clear drafts that match exactly to avoid clutter, optional
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
-      console.error("Error saving prediction:", error);
+      console.error("Error saving predictions:", error);
+    } finally {
+      setSavingActive(false);
     }
   };
 
@@ -170,8 +209,16 @@ export default function PredictionsPage() {
     }))
     : activeRound?.matches || [];
 
+  const hasUnsavedDrafts = Object.keys(drafts).some(matchId => {
+    const d = drafts[matchId];
+    if (d.home === '' || d.away === '') return false;
+    const saved = predictions[matchId];
+    if (!saved) return true;
+    return saved.home.toString() !== d.home || saved.away.toString() !== d.away;
+  });
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-8 animate-in fade-in duration-700 pb-32 relative">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-white font-lexend tracking-tight uppercase mb-2">
@@ -204,47 +251,110 @@ export default function PredictionsPage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          className="grid gap-4 md:grid-cols-2"
+          className="space-y-4"
         >
-          {currentMatches.map((match, idx) => {
-            const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx - 1].group !== match.group);
+          {/* Desktop Table View */}
+          <div className="hidden md:block glass-dark rounded-[2.5rem] overflow-hidden border-white/5">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-white/5">
+                  <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 w-32">Data/Hora</th>
+                  <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 text-center">Partida</th>
+                  <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 w-40 text-center">Status / Pontos</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {currentMatches.map((match, idx) => {
+                  const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx - 1].group !== match.group);
+                  return (
+                    <React.Fragment key={match.id}>
+                      {showPhase && (
+                        <tr>
+                          <td colSpan={3} className="bg-white/5 px-6 py-3">
+                            <h3 className="text-xs font-black text-secondary font-lexend uppercase tracking-widest">
+                              {match.group}
+                            </h3>
+                          </td>
+                        </tr>
+                      )}
+                      <PredictionRow 
+                        match={match} 
+                        prediction={predictions[match.id]} 
+                        draft={drafts[match.id]} 
+                        onChange={handleDraftChange} 
+                        result={results[match.id]} 
+                      />
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-            return (
-              <>
-                {showPhase && (
-                  <div className="md:col-span-2">
-                    <h3 className="text-xl font-black text-secondary font-lexend uppercase tracking-tight mt-6 mb-4 border-l-4 border-secondary pl-4">
+          {/* Mobile Cards View */}
+          <div className="md:hidden space-y-4">
+            {currentMatches.map((match, idx) => {
+              const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx - 1].group !== match.group);
+              return (
+                <React.Fragment key={match.id}>
+                  {showPhase && (
+                    <h3 className="text-xs font-black text-secondary font-lexend uppercase tracking-widest mt-6 mb-2 pl-4 border-l-2 border-secondary">
                       {match.group}
                     </h3>
-                  </div>
-                )}
-                <MatchCard
-                  match={match}
-                  prediction={predictions[match.id]}
-                  result={results[match.id]}
-                  onSave={handleSavePrediction}
-                />
-              </>
-            );
-          })}
+                  )}
+                  <PredictionCardCompact 
+                    match={match} 
+                    prediction={predictions[match.id]} 
+                    draft={drafts[match.id]} 
+                    onChange={handleDraftChange} 
+                    result={results[match.id]} 
+                  />
+                </React.Fragment>
+              );
+            })}
+          </div>
         </motion.div>
+      </AnimatePresence>
+
+      {/* Floating Save Button */}
+      <AnimatePresence>
+        {hasUnsavedDrafts && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-md"
+          >
+            <button
+              onClick={handleSaveAll}
+              disabled={savingActive}
+              className={`w-full py-4 rounded-[1.5rem] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-2xl transition-all ${
+                saveSuccess 
+                  ? 'bg-primary text-dark glow-primary' 
+                  : 'bg-white text-dark hover:scale-105'
+              }`}
+            >
+              {savingActive ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-dark"></div>
+              ) : saveSuccess ? (
+                <><CheckCircle2 size={18} /> Salvo com Sucesso</>
+              ) : (
+                <><Trophy size={18} /> Salvar Palpites da Rodada</>
+              )}
+            </button>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
 }
 
-function MatchCard({ match, prediction, result, onSave }: { match: Match; prediction: { home: number; away: number } | undefined; result: { home: number; away: number } | undefined; onSave: (id: string, home: number, away: number) => void }) {
-  const [home, setHome] = useState(prediction?.home ?? '');
-  const [away, setAway] = useState(prediction?.away ?? '');
+function PredictionRow({ match, prediction, draft, onChange, result }: any) {
   const isGroupStage = !isNaN(Number(match.id));
   const locked = isMatchLocked(match.date, match.time, isGroupStage);
-
-  useEffect(() => {
-    if (prediction) {
-      setHome(prediction.home);
-      setAway(prediction.away);
-    }
-  }, [prediction]);
+  
+  const homeVal = draft?.home ?? prediction?.home?.toString() ?? '';
+  const awayVal = draft?.away ?? prediction?.away?.toString() ?? '';
 
   const points = result && prediction ? calculatePoints(
     { homeScore: Number(prediction.home), awayScore: Number(prediction.away) },
@@ -252,145 +362,132 @@ function MatchCard({ match, prediction, result, onSave }: { match: Match; predic
   ) : null;
 
   return (
-    <motion.div
-      whileHover={!locked ? { y: -4 } : {}}
-      className={`glass-dark p-6 rounded-[2rem] transition-all group relative overflow-hidden ${locked ? 'opacity-80' : 'hover:border-primary/30'}`}
-    >
-      {/* Top Status Bar */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
-          <span className="text-[10px] font-black uppercase tracking-widest text-primary">Grupo {match.group}</span>
+    <tr className={`hover:bg-white/[0.02] transition-colors group ${locked ? 'opacity-70' : ''}`}>
+      <td className="px-6 py-4">
+        <div className="flex flex-col">
+          <span className="text-sm font-bold text-white/80">{match.date.split('-').reverse().join('/')}</span>
+          <span className="text-[10px] font-medium text-white/40 uppercase">{match.time}</span>
+          {locked && <span className="text-[9px] text-red-500 font-black mt-1 uppercase flex items-center gap-1"><Lock size={8}/> Fechado</span>}
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center justify-center gap-4 sm:gap-6">
+          <div className="flex flex-col items-center gap-1.5 w-24 sm:w-28">
+            <img src={getFlagUrl(match.homeTeam)} className="w-10 h-6 object-cover rounded shadow-sm flag-3d" alt="" />
+            <span className="text-xs font-bold text-white/80 text-center truncate w-full">{match.homeTeam}</span>
+          </div>
+          
+          <div className="flex items-center justify-center gap-2 min-w-[120px]">
+            <input
+              type="number"
+              value={homeVal}
+              onChange={(e) => onChange(match.id, 'home', e.target.value)}
+              disabled={locked}
+              className="w-12 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-lg font-black focus:outline-none focus:border-primary transition-all disabled:opacity-50"
+            />
+            <span className="text-white/20 font-bold">X</span>
+            <input
+              type="number"
+              value={awayVal}
+              onChange={(e) => onChange(match.id, 'away', e.target.value)}
+              disabled={locked}
+              className="w-12 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-lg font-black focus:outline-none focus:border-secondary transition-all disabled:opacity-50"
+            />
+          </div>
+
+          <div className="flex flex-col items-center gap-1.5 w-24 sm:w-28">
+            <img src={getFlagUrl(match.awayTeam)} className="w-10 h-6 object-cover rounded shadow-sm flag-3d" alt="" />
+            <span className="text-xs font-bold text-white/80 text-center truncate w-full">{match.awayTeam}</span>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-center">
+        {result ? (
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Oficial: {result.home}x{result.away}</span>
+            {points !== null && (
+              <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${points === 3 ? 'bg-primary/20 text-primary border-primary/20' : points === 1 ? 'bg-secondary/20 text-secondary border-secondary/20' : 'bg-white/5 text-white/40 border-white/5'}`}>
+                {points} Pts
+              </span>
+            )}
+          </div>
+        ) : locked ? (
+          <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Aguardando</span>
+        ) : (
+          <span className="text-[10px] text-primary/50 uppercase tracking-widest font-bold">Aberto</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function PredictionCardCompact({ match, prediction, draft, onChange, result }: any) {
+  const isGroupStage = !isNaN(Number(match.id));
+  const locked = isMatchLocked(match.date, match.time, isGroupStage);
+  
+  const homeVal = draft?.home ?? prediction?.home?.toString() ?? '';
+  const awayVal = draft?.away ?? prediction?.away?.toString() ?? '';
+
+  const points = result && prediction ? calculatePoints(
+    { homeScore: Number(prediction.home), awayScore: Number(prediction.away) },
+    { homeScore: result.home, awayScore: result.away }
+  ) : null;
+
+  return (
+    <div className={`glass-dark p-4 rounded-[1.5rem] border-white/5 space-y-4 ${locked ? 'opacity-80' : ''}`}>
+      <div className="flex justify-between items-center">
+        <span className="text-[9px] font-black text-primary uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded-full">
+          Grupo {match.group}
+        </span>
+        <div className="flex items-center gap-2">
+          {locked && <Lock size={10} className="text-red-500" />}
+          <div className="text-right">
+            <p className="text-[10px] font-bold text-white/80">{match.date.split('-').reverse().slice(0,2).join('/')}</p>
+            <p className="text-[9px] font-medium text-white/40 uppercase">{match.time}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex-1 flex flex-col items-center gap-1">
+          <img src={getFlagUrl(match.homeTeam)} className="w-8 h-5 object-cover rounded shadow-sm flag-3d" alt="" />
+          <span className="text-[10px] font-bold text-white text-center line-clamp-1">{match.homeTeam}</span>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            value={homeVal}
+            onChange={(e) => onChange(match.id, 'home', e.target.value)}
+            disabled={locked}
+            className="w-10 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-sm font-black focus:outline-none focus:border-primary disabled:opacity-50"
+          />
+          <span className="text-white/20 font-black text-xs">X</span>
+          <input
+            type="number"
+            value={awayVal}
+            onChange={(e) => onChange(match.id, 'away', e.target.value)}
+            disabled={locked}
+            className="w-10 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-sm font-black focus:outline-none focus:border-secondary disabled:opacity-50"
+          />
         </div>
 
-        <div className="flex items-center gap-2">
-          {locked ? (
-            <div className="px-3 py-1 bg-red-500/10 text-red-500 rounded-full font-black text-[9px] uppercase tracking-widest border border-red-500/10 flex items-center gap-1.5">
-              <Lock size={10} />
-              Encerrado
-            </div>
-          ) : (
-            <div className="px-3 py-1 bg-primary/10 text-primary rounded-full font-black text-[9px] uppercase tracking-widest border border-primary/10 flex items-center gap-1.5">
-              <div className="w-1 h-1 bg-primary rounded-full animate-pulse" />
-              Aberto
-            </div>
+        <div className="flex-1 flex flex-col items-center gap-1">
+          <img src={getFlagUrl(match.awayTeam)} className="w-8 h-5 object-cover rounded shadow-sm flag-3d" alt="" />
+          <span className="text-[10px] font-bold text-white text-center line-clamp-1">{match.awayTeam}</span>
+        </div>
+      </div>
+
+      {result && (
+        <div className="flex items-center justify-between pt-3 border-t border-white/5">
+          <span className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Resultado: {result.home}x{result.away}</span>
+          {points !== null && (
+            <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border ${points === 3 ? 'bg-primary/20 text-primary border-primary/20' : points === 1 ? 'bg-secondary/20 text-secondary border-secondary/20' : 'bg-white/5 text-white/40 border-white/5'}`}>
+              +{points} Pts
+            </span>
           )}
         </div>
-      </div>
-
-      {/* Date & Time Header */}
-      <div className="flex flex-col items-center mb-8 text-center">
-        <div className="flex items-center gap-3 text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
-          <div className="flex items-center gap-1.5">
-            <Calendar className="w-3 h-3" />
-            {match.date.split('-').reverse().slice(0, 2).join('/')}
-          </div>
-          <div className="w-1 h-1 bg-white/20 rounded-full" />
-          <div className="text-white/60">{match.time}</div>
-        </div>
-      </div>
-
-      {/* Teams and Inputs */}
-      <div className="flex items-center justify-between gap-2 sm:gap-4 relative">
-        {/* Home Team */}
-        <div className="flex-1 flex flex-col items-center gap-4">
-          <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center border border-white/10 group-hover:border-primary/20 transition-colors overflow-hidden relative shadow-inner">
-            <img src={getFlagUrl(match.homeTeam)} alt={match.homeTeam} className="w-full h-full object-cover scale-110 flag-3d" />
-          </div>
-          <span className="text-xs font-black text-center leading-tight min-h-[32px] flex items-center uppercase tracking-tight text-white/80">{match.homeTeam}</span>
-          <input
-            type="number"
-            value={home}
-            onChange={(e) => setHome(e.target.value)}
-            disabled={locked}
-            placeholder="0"
-            className={`w-16 h-14 bg-black/40 border border-white/10 rounded-2xl text-center text-2xl font-black focus:outline-none transition-all ${locked ? 'opacity-50 cursor-not-allowed' : 'focus:border-primary focus:ring-4 focus:ring-primary/10'}`}
-          />
-        </div>
-
-        {/* Center Section: X, Result and Points */}
-        <div className="flex flex-col items-center justify-center gap-4 min-w-[80px]">
-          <div className="text-2xl font-black text-white/10">VS</div>
-
-          <AnimatePresence>
-            {result && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex flex-col items-center gap-3"
-              >
-                <div className="flex flex-col items-center">
-                  <span className="text-[8px] font-black text-white/30 uppercase mb-1">Final</span>
-                  <div className="text-lg font-black text-white bg-white/5 border border-white/10 px-3 py-1 rounded-xl">
-                    {result.home} - {result.away}
-                  </div>
-                </div>
-
-                {points !== null && (
-                  <motion.div
-                    initial={{ y: 10, opacity: 0, scale: 0.5 }}
-                    animate={{ y: 0, opacity: 1, scale: 1 }}
-                    className={`px-4 py-2.5 rounded-2xl font-black text-[11px] uppercase tracking-[0.1em] flex flex-col items-center gap-1 shadow-2xl border-2 ${points === 3 
-                        ? 'bg-primary text-dark border-primary/50 glow-primary scale-110' :
-                        points === 1 
-                        ? 'bg-secondary text-dark border-secondary/50 glow-secondary' :
-                        'bg-white/10 text-white/40 border-white/10'
-                      }`}
-                  >
-                    <span className="text-[8px] opacity-60">Você fez</span>
-                    <div className="flex items-center gap-1.5">
-                      <Trophy size={14} />
-                      {points} {points === 1 ? 'PONTO' : 'PONTOS'}
-                    </div>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Away Team */}
-        <div className="flex-1 flex flex-col items-center gap-4">
-          <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center border border-white/10 group-hover:border-secondary/20 transition-colors overflow-hidden relative shadow-inner">
-            <img src={getFlagUrl(match.awayTeam)} alt={match.awayTeam} className="w-full h-full object-cover scale-110 flag-3d" />
-          </div>
-          <span className="text-xs font-black text-center leading-tight min-h-[32px] flex items-center uppercase tracking-tight text-white/80">{match.awayTeam}</span>
-          <input
-            type="number"
-            value={away}
-            onChange={(e) => setAway(e.target.value)}
-            disabled={locked}
-            placeholder="0"
-            className={`w-16 h-14 bg-black/40 border border-white/10 rounded-2xl text-center text-2xl font-black focus:outline-none transition-all ${locked ? 'opacity-50 cursor-not-allowed' : 'focus:border-secondary focus:ring-4 focus:ring-secondary/10'}`}
-          />
-        </div>
-      </div>
-
-      {/* Action Footer */}
-      <div className="mt-8">
-        {!locked ? (
-          <button
-            onClick={() => onSave(match.id, Number(home), Number(away))}
-            className="w-full py-4 rounded-[1.25rem] bg-white/5 hover:bg-primary hover:text-dark text-[11px] font-black uppercase tracking-widest transition-all border border-white/5 flex items-center justify-center gap-2 group/btn shadow-xl active:scale-95"
-          >
-            {prediction ? (
-              <>
-                <CheckCircle2 size={16} className="text-primary group-hover/btn:text-dark" />
-                Atualizar Palpite
-              </>
-            ) : (
-              <>
-                <Trophy size={16} className="text-white/20 group-hover/btn:text-dark" />
-                Salvar Palpite
-              </>
-            )}
-          </button>
-        ) : !result && (
-          <div className="w-full py-4 rounded-[1.25rem] bg-white/5 text-white/20 text-[11px] font-black uppercase tracking-widest border border-white/5 flex items-center justify-center gap-2">
-            <AlertCircle size={16} />
-            Aguardando Resultado
-          </div>
-        )}
-      </div>
-    </motion.div>
+      )}
+    </div>
   );
 }
