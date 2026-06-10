@@ -13,6 +13,7 @@ export default function UsersPage() {
   const { members, leagueData, loading, mutate } = useLeagueMembers(currentLeagueId);
   const [search, setSearch] = useState('');
   const [isOwner, setIsOwner] = useState(false);
+  const [predictionCounts, setPredictionCounts] = useState<Record<string, number>>({});
 
   // Verifica se é dono da liga
   useEffect(() => {
@@ -20,6 +21,27 @@ export default function UsersPage() {
       setIsOwner(leagueData.owner_id === currentUser.id);
     }
   }, [leagueData, currentUser]);
+
+  useEffect(() => {
+    if (!currentLeagueId) return;
+
+    const fetchCounts = async () => {
+      const { data, error } = await supabase
+        .from('predictions')
+        .select('user_id')
+        .eq('league_id', currentLeagueId);
+
+      if (data && !error) {
+        const counts: Record<string, number> = {};
+        data.forEach(p => {
+          counts[p.user_id] = (counts[p.user_id] || 0) + 1;
+        });
+        setPredictionCounts(counts);
+      }
+    };
+
+    fetchCounts();
+  }, [currentLeagueId]);
 
   const handleToggleApproval = async (id: string, currentStatus: boolean) => {
     if (!currentLeagueId) return;
@@ -113,6 +135,7 @@ export default function UsersPage() {
             <MemberCard
               key={member.id}
               member={member}
+              predictionCount={predictionCounts[member.id] || 0}
               onToggleApproval={handleToggleApproval}
               onDelete={handleDeleteParticipant}
             />
@@ -157,10 +180,12 @@ function OccupancyCard({ current, max }: { current: number; max: number }) {
 
 function MemberCard({
   member,
+  predictionCount,
   onToggleApproval,
   onDelete,
 }: {
   member: UserProfile;
+  predictionCount: number;
   onToggleApproval: (id: string, currentStatus: boolean) => void;
   onDelete: (id: string) => void;
 }) {
@@ -200,6 +225,9 @@ function MemberCard({
                 <span>Log: {new Date(member.last_login).toLocaleDateString('pt-BR')}</span>
               </div>
             )}
+            <div className="flex items-center gap-1.5 text-[10px] text-primary/80 font-bold mt-1">
+              <span className="px-2 py-0.5 bg-primary/10 rounded-md">Palpites Salvos: {predictionCount}</span>
+            </div>
           </div>
         </div>
       </div>
