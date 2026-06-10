@@ -18,6 +18,7 @@ export default function PredictionsPage() {
   const [activeTab, setActiveTab] = useState("1ª Rodada");
   const [predictions, setPredictions] = useState<Record<string, { home: number; away: number }>>({});
   const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
+  const [loading, setLoading] = useState(true);
   const [drafts, setDrafts] = useState<Record<string, { home: string; away: string }>>({});
   const [savingActive, setSavingActive] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
