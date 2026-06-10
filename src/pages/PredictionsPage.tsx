@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WORLD_CUP_2026_ROUNDS, Match } from '../lib/matches';
 import { KNOCKOUT_MATCHES } from '../lib/knockout';
