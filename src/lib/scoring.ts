@@ -33,11 +33,19 @@ export function calculatePoints(prediction: GameResult, official: GameResult): n
   return predResult === offResult ? 1 : 0;
 }
 
-export function isMatchLocked(matchDate: string, matchTime: string): boolean {
-  const matchDateTime = new Date(`${matchDate}T${matchTime}`);
-  const now = new Date();
+export function isMatchLocked(matchDate: string, matchTime: string, isGroupStage: boolean = false): boolean {
   const LOCK_TIME = 30 * 60 * 1000;
-  return (matchDateTime.getTime() - now.getTime()) <= LOCK_TIME;
+  let targetDateTime: Date;
+
+  if (isGroupStage) {
+    const firstMatch = WORLD_CUP_2026_ROUNDS[0].matches[0];
+    targetDateTime = new Date(`${firstMatch.date}T${firstMatch.time}`);
+  } else {
+    targetDateTime = new Date(`${matchDate}T${matchTime}`);
+  }
+
+  const now = new Date();
+  return (targetDateTime.getTime() - now.getTime()) <= LOCK_TIME;
 }
 
 export function getGroupStandings(results: Record<string, GameResult>) {

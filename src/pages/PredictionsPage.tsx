@@ -236,7 +236,8 @@ export default function PredictionsPage() {
 function MatchCard({ match, prediction, result, onSave }: { match: Match; prediction: { home: number; away: number } | undefined; result: { home: number; away: number } | undefined; onSave: (id: string, home: number, away: number) => void }) {
   const [home, setHome] = useState(prediction?.home ?? '');
   const [away, setAway] = useState(prediction?.away ?? '');
-  const locked = isMatchLocked(match.date, match.time);
+  const isGroupStage = !isNaN(Number(match.id));
+  const locked = isMatchLocked(match.date, match.time, isGroupStage);
 
   useEffect(() => {
     if (prediction) {

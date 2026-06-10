@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useLeague } from '../hooks/useLeague';
 import { useLeagueMembers } from '../hooks/useLeagueMembers';
-import { UserCheck, UserX, ShieldCheck, Mail, Calendar, Search } from 'lucide-react';
+import { UserCheck, UserX, ShieldCheck, Mail, Calendar, Search, Trash2 } from 'lucide-react';
 import type { UserProfile } from '../lib/types';
 
 export default function UsersPage() {
@@ -37,7 +37,24 @@ export default function UsersPage() {
       console.error('Error updating approval:', error);
     }
   };
-
+  const handleDeleteParticipant = async (id: string) => {
+    if (!currentLeagueId) return;
+    if (!confirm('Tem certeza que deseja excluir este participante? Esta ação não pode ser desfeita e ele perderá o acesso à liga.')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('league_members')
+        .delete()
+        .eq('league_id', currentLeagueId)
+        .eq('user_id', id);
+        
+      if (error) throw error;
+      
+      mutate();
+    } catch (error) {
+      console.error('Error deleting participant:', error);
+    }
+  };
   if (!isAdmin && !isOwner) {
     return (
       <div className="p-20 text-center text-white/20 font-black uppercase tracking-widest">
@@ -97,6 +114,7 @@ export default function UsersPage() {
               key={member.id}
               member={member}
               onToggleApproval={handleToggleApproval}
+              onDelete={handleDeleteParticipant}
             />
           ))}
         </AnimatePresence>
@@ -140,9 +158,11 @@ function OccupancyCard({ current, max }: { current: number; max: number }) {
 function MemberCard({
   member,
   onToggleApproval,
+  onDelete,
 }: {
   member: UserProfile;
   onToggleApproval: (id: string, currentStatus: boolean) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
     <motion.div
@@ -184,20 +204,29 @@ function MemberCard({
         </div>
       </div>
 
-      <button
-        onClick={() => onToggleApproval(member.id, member.approved)}
-        className={`flex flex-col items-center justify-center gap-1 w-24 h-24 rounded-2xl transition-all font-black text-[9px] uppercase tracking-widest border ${
-          member.approved
-            ? 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white'
-            : 'bg-primary/10 border-primary/20 text-primary hover:bg-primary hover:text-dark'
-        }`}
-      >
-        {member.approved ? (
-          <><UserX size={20} />Bloquear</>
-        ) : (
-          <><UserCheck size={20} />Aprovar</>
-        )}
-      </button>
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={() => onToggleApproval(member.id, member.approved)}
+          className={`flex items-center justify-center gap-2 w-28 h-10 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest border ${
+            member.approved
+              ? 'bg-orange-500/10 border-orange-500/20 text-orange-500 hover:bg-orange-500 hover:text-white'
+              : 'bg-primary/10 border-primary/20 text-primary hover:bg-primary hover:text-dark'
+          }`}
+        >
+          {member.approved ? (
+            <><UserX size={14} />Bloquear</>
+          ) : (
+            <><UserCheck size={14} />Aprovar</>
+          )}
+        </button>
+        <button
+          onClick={() => onDelete(member.id)}
+          className="flex items-center justify-center gap-2 w-28 h-10 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest border bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white"
+        >
+          <Trash2 size={14} />
+          Excluir
+        </button>
+      </div>
     </motion.div>
   );
 }
