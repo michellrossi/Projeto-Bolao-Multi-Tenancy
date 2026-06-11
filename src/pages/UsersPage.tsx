@@ -26,18 +26,35 @@ export default function UsersPage() {
     if (!currentLeagueId) return;
 
     const fetchCounts = async () => {
-      const { data, error } = await supabase
-        .from('predictions')
-        .select('user_id')
-        .eq('league_id', currentLeagueId);
+      let allData: { user_id: string }[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (data && !error) {
-        const counts: Record<string, number> = {};
-        data.forEach(p => {
-          counts[p.user_id] = (counts[p.user_id] || 0) + 1;
-        });
-        setPredictionCounts(counts);
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('predictions')
+          .select('user_id')
+          .eq('league_id', currentLeagueId)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error || !data) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        }
       }
+
+      const counts: Record<string, number> = {};
+      allData.forEach(p => {
+        counts[p.user_id] = (counts[p.user_id] || 0) + 1;
+      });
+      setPredictionCounts(counts);
     };
 
     fetchCounts();

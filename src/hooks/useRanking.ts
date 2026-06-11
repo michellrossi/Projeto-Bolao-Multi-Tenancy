@@ -41,10 +41,29 @@ export function useRanking(leagueId: string | null) {
         .eq('league_id', leagueId);
 
       // 4. Palpites da liga (filtrado por league_id — não busca toda a tabela)
-      const { data: predsData } = await supabase
-        .from('predictions')
-        .select('user_id, match_id, home_score, away_score')
-        .eq('league_id', leagueId);
+      let allPredsData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('predictions')
+          .select('user_id, match_id, home_score, away_score')
+          .eq('league_id', leagueId)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error || !data) {
+          hasMore = false;
+        } else {
+          allPredsData = [...allPredsData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        }
+      }
 
       // Fallback para a Liga Demo caso o banco esteja vazio
       let finalMembers = membersData as LeagueMember[] ?? [];
@@ -61,7 +80,7 @@ export function useRanking(leagueId: string | null) {
       }
 
       const allPredictions: PredictionsMap = {};
-      predsData?.forEach(p => {
+      allPredsData.forEach(p => {
         if (!allPredictions[p.user_id]) allPredictions[p.user_id] = {};
         allPredictions[p.user_id][p.match_id] = { home: p.home_score, away: p.away_score };
       });
