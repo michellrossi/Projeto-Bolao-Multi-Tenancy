@@ -110,10 +110,16 @@ export default function UsersPage() {
     );
   }
 
-  const filteredMembers = members.filter(u =>
-    u.display_name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredMembers = members
+    .filter(u =>
+      u.display_name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      const nameA = a.display_name || '';
+      const nameB = b.display_name || '';
+      return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+    });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
