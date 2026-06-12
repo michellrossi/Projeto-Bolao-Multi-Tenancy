@@ -102,7 +102,7 @@ const TEAM_TRANSLATIONS: Record<string, string[]> = {
   "Coreia do Sul": ["South Korea"],
   "República Tcheca": ["Czechia", "Czech Republic"],
   "Canadá": ["Canada"],
-  "Bósnia": ["Bosnia", "Bosnia and Herzegovina"],
+  "Bósnia": ["Bosnia", "Bosnia and Herzegovina", "Bosnia-Herzegovina"],
   "Estados Unidos": ["USA", "United States"],
   "Paraguai": ["Paraguay"],
   "Catar": ["Qatar"],
