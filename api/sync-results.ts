@@ -172,10 +172,17 @@ function matchTeam(localName: string, apiName: string): boolean {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Segurança para evitar chamadas de terceiros (opcional, recomendado para rotas cron)
+  // Segurança para evitar chamadas de terceiros (aceita via Header Authorization ou parâmetro query ?secret=...)
   const authHeader = req.headers.authorization;
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized CRON execution' });
+  const querySecret = req.query.secret;
+
+  if (process.env.CRON_SECRET) {
+    const isHeaderValid = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+    const isQueryValid = querySecret === process.env.CRON_SECRET;
+
+    if (!isHeaderValid && !isQueryValid) {
+      return res.status(401).json({ error: 'Unauthorized CRON execution' });
+    }
   }
 
   const apiKey = process.env.API_SPORTS_KEY;
