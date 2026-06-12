@@ -90,13 +90,12 @@ const LOCAL_MATCHES: Match[] = [
   { id: "72", group: "J", homeTeam: "Jordânia", awayTeam: "Argentina", date: "2026-06-27", time: "23:00" }
 ];
 
-// Inicializa o cliente Supabase com a Service Role Key para ignorar RLS e atualizar a tabela results
+// Inicializa o Supabase
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Dicionário de tradução: Nome em português no matches.ts -> Nome retornado pela API-Sports (geralmente em inglês)
+// Dicionário de tradução: Nome em português local -> Nome na API Football-Data
 const TEAM_TRANSLATIONS: Record<string, string[]> = {
   "México": ["Mexico"],
   "África do Sul": ["South Africa"],
@@ -148,31 +147,26 @@ const TEAM_TRANSLATIONS: Record<string, string[]> = {
   "Colômbia": ["Colombia"]
 };
 
-// Função auxiliar para normalizar nomes para comparação secundária caso não estejam no dicionário
 function normalizeName(name: string): string {
   return name
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove acentos
-    .replace(/[^a-z0-9]/g, "");     // remove caracteres especiais e espaços
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
 }
 
-// Verifica se dois nomes de times batem (usando dicionário ou normalização)
 function matchTeam(localName: string, apiName: string): boolean {
-  // 1. Tenta pelo dicionário de traduções
   const translations = TEAM_TRANSLATIONS[localName];
   if (translations) {
     if (translations.some(t => t.toLowerCase() === apiName.toLowerCase())) {
       return true;
     }
   }
-  
-  // 2. Fallback por normalização aproximada
   return normalizeName(localName) === normalizeName(apiName);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Segurança para evitar chamadas de terceiros (aceita via Header Authorization ou parâmetro query ?secret=...)
+  // Validação de Segurança
   const authHeader = req.headers.authorization;
   const querySecret = req.query.secret;
 
@@ -185,54 +179,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  const apiKey = process.env.API_SPORTS_KEY;
+  const apiKey = process.env.FOOTBALL_DATA_API_KEY || process.env.API_SPORTS_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'API_SPORTS_KEY is not configured in environment variables.' });
+    return res.status(500).json({ error: 'API token is not configured.' });
   }
 
-  // ID padrão da Copa do Mundo na API-Sports é 1. Temporada é 2026.
-  const leagueId = process.env.API_SPORTS_LEAGUE || '1';
-  const season = process.env.API_SPORTS_SEASON || '2026';
-
   try {
-    console.log(`Buscando fixtures da liga ${leagueId}, temporada ${season}...`);
+    console.log(`Buscando fixtures da Copa do Mundo na Football-Data.org...`);
     
-    const response = await fetch(`https://v3.football.api-sports.io/fixtures?league=${leagueId}&season=${season}`, {
+    // WC é o código fixo para World Cup na Football-Data
+    const response = await fetch(`https://api.football-data.org/v4/competitions/WC/matches`, {
       method: 'GET',
       headers: {
-        'x-apisports-key': apiKey,
+        'X-Auth-Token': apiKey,
       }
     });
 
     if (!response.ok) {
-      throw new Error(`Erro na API-Sports: Status ${response.status}`);
+      throw new Error(`Erro na Football-Data API: Status ${response.status}`);
     }
 
     const data = await response.json();
-    const fixtures = data.response || [];
+    const matches = data.matches || [];
 
-    if (fixtures.length === 0) {
+    if (matches.length === 0) {
       return res.status(200).json({ message: 'Nenhuma partida retornada pela API.', count: 0 });
     }
 
-    // Extrai todas as nossas partidas locais para cruzar
     const localMatches = LOCAL_MATCHES;
     const updates: { match_id: string; home_score: number; away_score: number; updated_at: string }[] = [];
 
-    // Percorre as partidas vindas da API
-    for (const fixture of fixtures) {
-      const { status, goals } = fixture;
+    // Percorre as partidas da API
+    for (const apiMatch of matches) {
+      const { status, score } = apiMatch;
       
-      // Processa partidas concluídas ou em andamento (Ao Vivo / Tempo Real)
-      const allowedStatuses = ['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE', 'FT', 'AET', 'PEN'];
-      if (!allowedStatuses.includes(status.short)) {
+      // Filtra apenas se estiver em andamento (IN_PLAY, PAUSED) ou terminado (FINISHED)
+      const allowedStatuses = ['IN_PLAY', 'PAUSED', 'FINISHED'];
+      if (!allowedStatuses.includes(status)) {
         continue;
       }
 
-      const apiHomeTeam = fixture.teams.home.name;
-      const apiAwayTeam = fixture.teams.away.name;
-      const homeGoals = goals.home;
-      const awayGoals = goals.away;
+      const apiHomeTeam = apiMatch.homeTeam.name;
+      const apiAwayTeam = apiMatch.awayTeam.name;
+      
+      // fullTime é o nó que armazena os gols do jogo regular na v4
+      const homeGoals = score.fullTime.home;
+      const awayGoals = score.fullTime.away;
 
       if (homeGoals === null || awayGoals === null) {
         continue;
@@ -251,12 +243,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           updated_at: new Date().toISOString()
         });
       } else {
-        console.warn(`Não foi possível mapear localmente: ${apiHomeTeam} vs ${apiAwayTeam}`);
+        console.warn(`Não mapeado: ${apiHomeTeam} vs ${apiAwayTeam}`);
       }
     }
 
     if (updates.length === 0) {
-      return res.status(200).json({ message: 'Nenhuma nova partida terminada para atualizar.', updatedCount: 0 });
+      return res.status(200).json({ message: 'Nenhum placar de jogo em andamento ou terminado para atualizar.', updatedCount: 0 });
     }
 
     console.log(`Atualizando ${updates.length} partidas no Supabase...`);
