@@ -223,9 +223,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (const fixture of fixtures) {
       const { status, goals } = fixture;
       
-      // Apenas processa se a partida já encerrou (FT = Full Time, AET = After Extra Time, PEN = Penalty)
-      const finishedStatuses = ['FT', 'AET', 'PEN'];
-      if (!finishedStatuses.includes(status.short)) {
+      // Processa partidas concluídas ou em andamento (Ao Vivo / Tempo Real)
+      const allowedStatuses = ['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE', 'FT', 'AET', 'PEN'];
+      if (!allowedStatuses.includes(status.short)) {
         continue;
       }
 
