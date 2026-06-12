@@ -122,7 +122,7 @@ const TEAM_TRANSLATIONS: Record<string, string[]> = {
   "Suécia": ["Sweden"],
   "Tunísia": ["Tunisia"],
   "Espanha": ["Spain"],
-  "Cabo Verde": ["Cape Verde", "Cabo Verde"],
+  "Cabo Verde": ["Cape Verde", "Cabo Verde", "Cape Verde Islands"],
   "Bélgica": ["Belgium"],
   "Egito": ["Egypt"],
   "Uruguai": ["Uruguay"],
