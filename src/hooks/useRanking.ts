@@ -20,10 +20,16 @@ export function useRanking(leagueId: string | null) {
 
     try {
       // 1. Resultados oficiais
-      const { data: resultsData } = await supabase.from('results').select('match_id, home_score, away_score');
+      const { data: resultsData } = await supabase.from('results').select('match_id, home_score, away_score, updated_at');
       const resultsMap: ResultsMap = {};
-      resultsData?.forEach(r => {
+      let lastUpdatedMatchId: string | null = null;
+      let lastUpdatedAt = '';
+      resultsData?.forEach((r: any) => {
         resultsMap[r.match_id] = { home: r.home_score, away: r.away_score };
+        if (r.updated_at && r.updated_at > lastUpdatedAt) {
+          lastUpdatedAt = r.updated_at;
+          lastUpdatedMatchId = r.match_id;
+        }
       });
 
       // 2. Nome da liga
@@ -116,6 +122,22 @@ export function useRanking(leagueId: string | null) {
           }
         });
 
+        // Determina resultado do palpite na última partida atualizada
+        let lastMatchResult: 'exact' | 'winner' | 'miss' | 'none' = 'none';
+        if (lastUpdatedMatchId) {
+          const lastPred = userPreds[lastUpdatedMatchId];
+          const lastResult = finalResultsMap[lastUpdatedMatchId];
+          if (lastPred && lastResult) {
+            const pts = calculatePoints(
+              { homeScore: lastPred.home, awayScore: lastPred.away },
+              { homeScore: lastResult.home, awayScore: lastResult.away }
+            );
+            if (pts === 3) lastMatchResult = 'exact';
+            else if (pts === 1) lastMatchResult = 'winner';
+            else lastMatchResult = 'miss';
+          }
+        }
+
         return {
           id: userId,
           name: profile.display_name || 'Competidor',
@@ -123,6 +145,7 @@ export function useRanking(leagueId: string | null) {
           points: totalPoints,
           trend: 'stable' as const,
           trendValue: 0,
+          lastMatchResult,
         };
       });
 

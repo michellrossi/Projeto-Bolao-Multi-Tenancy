@@ -58,6 +58,8 @@ export interface UserRanking {
   trend: 'up' | 'down' | 'stable';
   trendValue: number;
   isOwner?: boolean;
+  /** Resultado do palpite na última partida atualizada */
+  lastMatchResult: 'exact' | 'winner' | 'miss' | 'none';
 }
 
 /** Mapa de resultados indexados por match_id */
