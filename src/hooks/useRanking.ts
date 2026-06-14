@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { calculatePoints } from '../lib/scoring';
+import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
 import type { UserRanking, ResultsMap, PredictionsMap, LeagueMember } from '../lib/types';
 
 /**
@@ -20,16 +21,10 @@ export function useRanking(leagueId: string | null) {
 
     try {
       // 1. Resultados oficiais
-      const { data: resultsData } = await supabase.from('results').select('match_id, home_score, away_score, updated_at');
+      const { data: resultsData } = await supabase.from('results').select('match_id, home_score, away_score');
       const resultsMap: ResultsMap = {};
-      let lastUpdatedMatchId: string | null = null;
-      let lastUpdatedAt = '';
       resultsData?.forEach((r: any) => {
         resultsMap[r.match_id] = { home: r.home_score, away: r.away_score };
-        if (r.updated_at && r.updated_at > lastUpdatedAt) {
-          lastUpdatedAt = r.updated_at;
-          lastUpdatedMatchId = r.match_id;
-        }
       });
 
       // 2. Nome da liga
@@ -103,6 +98,26 @@ export function useRanking(leagueId: string | null) {
       if (isDemo && Object.keys(finalResultsMap).length === 0) {
         finalResultsMap['g1-1'] = { home: 2, away: 0 };
         finalResultsMap['g1-2'] = { home: 1, away: 1 };
+      }
+
+      // Encontrar a última partida finalizada com base na data e hora dos jogos (calendário oficial)
+      let lastUpdatedMatchId: string | null = null;
+      let maxMatchDateTime = 0;
+
+      const allMatches = WORLD_CUP_2026_ROUNDS.flatMap(r => r.matches);
+      allMatches.forEach(match => {
+        if (finalResultsMap[match.id]) {
+          const matchDateTime = new Date(`${match.date}T${match.time}`).getTime();
+          if (matchDateTime > maxMatchDateTime) {
+            maxMatchDateTime = matchDateTime;
+            lastUpdatedMatchId = match.id;
+          }
+        }
+      });
+
+      // Se for a liga Demo e não achou no calendário oficial, pega a última da demo
+      if (isDemo && !lastUpdatedMatchId) {
+        lastUpdatedMatchId = 'g1-2';
       }
 
       // 5. Cálculo de pontos + tendência
