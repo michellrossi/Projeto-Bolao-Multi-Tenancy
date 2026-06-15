@@ -127,13 +127,18 @@ export function useRanking(leagueId: string | null) {
         const userPreds = allPredictions[userId] ?? {};
 
         let totalPoints = 0;
+        let prevPoints = 0;
         Object.entries(userPreds).forEach(([matchId, pred]) => {
           const result = finalResultsMap[matchId];
           if (result) {
-            totalPoints += calculatePoints(
+            const pts = calculatePoints(
               { homeScore: pred.home, awayScore: pred.away },
               { homeScore: result.home, awayScore: result.away }
             );
+            totalPoints += pts;
+            if (matchId !== lastUpdatedMatchId) {
+              prevPoints += pts;
+            }
           }
         });
 
@@ -161,6 +166,7 @@ export function useRanking(leagueId: string | null) {
           trend: 'stable' as const,
           trendValue: 0,
           lastMatchResult,
+          prevPoints, // campo temporário para cálculo da tendência
         };
       });
 
@@ -169,29 +175,46 @@ export function useRanking(leagueId: string | null) {
         return a.name.localeCompare(b.name);
       });
 
-      // Calcula tendência comparando com snapshot anterior (localStorage)
-      const snapshotKey = `ranking_snapshot_${leagueId}`;
-      const prevSnapshotRaw = localStorage.getItem(snapshotKey);
-      if (prevSnapshotRaw) {
-        const prevPositions: Record<string, number> = JSON.parse(prevSnapshotRaw);
+      // Calcula tendência comparando a classificação atual com a classificação sem o último jogo
+      if (lastUpdatedMatchId) {
+        const prevRankingList = rankingList.map(p => ({
+          id: p.id,
+          name: p.name,
+          points: (p as any).prevPoints,
+        }));
+
+        prevRankingList.sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return a.name.localeCompare(b.name);
+        });
+
+        const prevPositions: Record<string, number> = {};
+        prevRankingList.forEach((player, posIndex) => {
+          prevPositions[player.id] = posIndex;
+        });
+
         rankingList.forEach((player, currentPos) => {
           const prevPos = prevPositions[player.id];
-          if (prevPos === undefined) return;
-          const diff = prevPos - currentPos; // positivo = subiu
-          if (diff > 0) {
-            player.trend = 'up';
-            player.trendValue = diff;
-          } else if (diff < 0) {
-            player.trend = 'down';
-            player.trendValue = Math.abs(diff);
+          if (prevPos !== undefined) {
+            const diff = prevPos - currentPos; // positivo = subiu
+            if (diff > 0) {
+              player.trend = 'up';
+              player.trendValue = diff;
+            } else if (diff < 0) {
+              player.trend = 'down';
+              player.trendValue = Math.abs(diff);
+            } else {
+              player.trend = 'stable';
+              player.trendValue = 0;
+            }
           }
         });
       }
 
-      // Salva snapshot atual para próxima comparação
-      const newSnapshot: Record<string, number> = {};
-      rankingList.forEach((p, i) => { newSnapshot[p.id] = i; });
-      localStorage.setItem(snapshotKey, JSON.stringify(newSnapshot));
+      // Limpa a propriedade temporária prevPoints
+      rankingList.forEach(p => {
+        delete (p as any).prevPoints;
+      });
 
       setRankings(rankingList);
     } catch (error) {
