@@ -60,6 +60,7 @@ export interface UserRanking {
   isOwner?: boolean;
   /** Resultado do palpite na última partida atualizada */
   lastMatchResult: 'exact' | 'winner' | 'miss' | 'none';
+  lastMatchPrediction?: { home: number; away: number } | null;
   exactCount: number;
   winnerCount: number;
   missCount: number;

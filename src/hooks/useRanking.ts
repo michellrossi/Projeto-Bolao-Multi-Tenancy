@@ -153,10 +153,12 @@ export function useRanking(leagueId: string | null) {
 
         // Determina resultado do palpite na última partida atualizada
         let lastMatchResult: 'exact' | 'winner' | 'miss' | 'none' = 'none';
+        let lastMatchPrediction: { home: number; away: number } | null = null;
         if (lastUpdatedMatchId) {
           const lastPred = userPreds[lastUpdatedMatchId];
           const lastResult = finalResultsMap[lastUpdatedMatchId];
           if (lastPred && lastResult) {
+            lastMatchPrediction = { home: lastPred.home, away: lastPred.away };
             const pts = calculatePoints(
               { homeScore: lastPred.home, awayScore: lastPred.away },
               { homeScore: lastResult.home, awayScore: lastResult.away }
@@ -175,6 +177,7 @@ export function useRanking(leagueId: string | null) {
           trend: 'stable' as const,
           trendValue: 0,
           lastMatchResult,
+          lastMatchPrediction,
           exactCount,
           winnerCount,
           missCount,

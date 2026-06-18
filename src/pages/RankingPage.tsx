@@ -2,7 +2,7 @@ import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { useLeague } from '../hooks/useLeague';
 import { useRanking } from '../hooks/useRanking';
-import { Trophy, TrendingUp, TrendingDown, Minus, Crown, Target, Check, X } from 'lucide-react';
+import { Trophy, Crown } from 'lucide-react';
 import type { UserRanking } from '../lib/types';
 
 export default function RankingPage() {
@@ -151,56 +151,69 @@ function RankingRow({
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
-      className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all ${
+      className={`relative flex items-center justify-between p-4 rounded-[1.75rem] border transition-all duration-300 ${
         isCurrentUser
-          ? 'bg-primary/10 border-primary shadow-[0_0_20px_rgba(0,255,133,0.1)]'
-          : 'glass-dark border-white/5 hover:bg-white/[0.03]'
+          ? 'bg-primary/5 border-primary/30 shadow-[0_0_20px_rgba(0,148,64,0.1)]'
+          : 'bg-[#0b0e14] border-white/5 hover:bg-white/[0.02]'
       }`}
     >
       <div className="flex items-center gap-4">
-        <span className={`w-8 text-sm font-black ${isCurrentUser ? 'text-primary' : 'text-white/40'}`}>
+        {/* Posição geral */}
+        <span className="w-8 text-center text-sm font-black text-white/40">
           {index + 1}º
         </span>
-        <div className="relative">
-          <img src={player.photo} className="w-10 h-10 rounded-full object-cover" alt="" />
+
+        {/* Avatar circular maior */}
+        <div className="relative flex-shrink-0">
+          <img src={player.photo} className="w-12 h-12 rounded-full object-cover border border-white/10" alt="" />
           {isCurrentUser && (
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full border-2 border-dark" />
+            <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-[#0b0e14]" />
           )}
         </div>
-        <div>
+
+        {/* Informações principais */}
+        <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <p className="font-bold text-sm text-white">
-              {player.name}{' '}
-              {player.isOwner && <span className="text-primary ml-1 text-[10px]">(ADM)</span>}
+              {player.name}
             </p>
-            {isCurrentUser && (
-              <span className="text-[8px] font-black bg-primary text-dark px-1.5 py-0.5 rounded uppercase">
+            {player.isOwner && (
+              <span className="text-primary font-black text-[9px] bg-primary/10 px-1 py-0.5 rounded uppercase tracking-wider border border-primary/20">
+                ADM
+              </span>
+            )}
+            {isCurrentUser && !player.isOwner && (
+              <span className="text-dark font-black text-[9px] bg-primary px-1 py-0.5 rounded uppercase tracking-wider">
                 Você
               </span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 mt-1">
-            <TrendIndicator trend={player.trend} value={player.trendValue} />
-            <LastMatchBadge result={player.lastMatchResult} />
-          </div>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            <span className="inline-flex items-center gap-1 text-[9px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10 uppercase tracking-wider">
-              <Target size={10} /> {player.exactCount} {player.exactCount === 1 ? 'Cravada' : 'Cravadas'}
-            </span>
-            <span className="inline-flex items-center gap-1 text-[9px] font-black text-yellow-400 bg-yellow-400/5 px-2 py-0.5 rounded-full border border-yellow-400/10 uppercase tracking-wider">
-              <Check size={10} /> {player.winnerCount} {player.winnerCount === 1 ? 'Acertou Vencedor' : 'Acertou Vencedor'}
-            </span>
-            <span className="inline-flex items-center gap-1 text-[9px] font-black text-red-400 bg-red-400/5 px-2 py-0.5 rounded-full border border-red-400/10 uppercase tracking-wider">
-              <X size={10} /> {player.missCount} {player.missCount === 1 ? 'Não Acertou' : 'Não Acertou'}
-            </span>
-          </div>
+          
+          {/* Indicador de tendência reposicionado para baixo do nome */}
+          <TrendIndicator trend={player.trend} value={player.trendValue} />
+
+          {/* Detalhes do último jogo */}
+          <LastMatchPredictionDetails result={player.lastMatchResult} prediction={player.lastMatchPrediction} />
         </div>
       </div>
-      <div className="text-right">
-        <p className={`text-lg font-black ${isCurrentUser ? 'text-primary' : 'text-white'}`}>
-          {player.points}
-        </p>
-        <p className="text-[8px] font-black text-white/60 uppercase tracking-widest">Pontos</p>
+
+      {/* Lado Direito */}
+      <div className="flex items-center gap-4 md:gap-6">
+        {/* Bloco vertical de estatísticas */}
+        <div className="flex flex-col text-right font-black text-[10px] tracking-wider space-y-0.5">
+          <div className="text-primary uppercase">CRAVOU: {player.exactCount}</div>
+          <div className="text-yellow-400 uppercase">ACERTOU: {player.winnerCount}</div>
+          <div className="text-red-500 uppercase">ERROU: {player.missCount}</div>
+        </div>
+
+        {/* Linha divisória vertical sutil */}
+        <div className="h-10 w-px bg-white/10" />
+
+        {/* Bloco de pontuação */}
+        <div className="flex flex-col items-center justify-center min-w-[65px]">
+          <span className="text-xl md:text-2xl font-black text-white leading-none">{player.points}</span>
+          <span className="text-[8px] md:text-[9px] font-black text-white/40 tracking-widest mt-1 uppercase">PONTOS</span>
+        </div>
       </div>
     </motion.div>
   );
@@ -209,51 +222,63 @@ function RankingRow({
 function TrendIndicator({ trend, value }: { trend: UserRanking['trend']; value: number }) {
   if (trend === 'up') {
     return (
-      <div className="flex items-center gap-1 text-[9px] font-black text-primary uppercase">
-        <TrendingUp size={10} /> Subiu {value} {value === 1 ? 'posição' : 'posições'}
+      <div className="text-[10px] font-black text-primary uppercase tracking-wider flex items-center gap-1">
+        <span>↱</span> SUBIU {value} {value === 1 ? 'POSIÇÃO' : 'POSIÇÕES'}
       </div>
     );
   }
   if (trend === 'down') {
     return (
-      <div className="flex items-center gap-1 text-[9px] font-black text-red-500 uppercase">
-        <TrendingDown size={10} /> Caiu {value} {value === 1 ? 'posição' : 'posições'}
+      <div className="text-[10px] font-black text-red-500 uppercase tracking-wider flex items-center gap-1">
+        <span>↳</span> CAIU {value} {value === 1 ? 'POSIÇÃO' : 'POSIÇÕES'}
       </div>
     );
   }
   return (
-    <div className="flex items-center gap-1 text-[9px] font-black text-white/50 uppercase">
-      <Minus size={10} /> Manteve posição
+    <div className="text-[10px] font-black text-white/40 uppercase tracking-wider flex items-center gap-1">
+      <span>–</span> MANTEVE POSIÇÃO
     </div>
   );
 }
 
-function LastMatchBadge({ result }: { result: UserRanking['lastMatchResult'] }) {
-  if (result === 'none') return null;
+function LastMatchPredictionDetails({
+  result,
+  prediction,
+}: {
+  result: UserRanking['lastMatchResult'];
+  prediction?: { home: number; away: number } | null;
+}) {
+  if (result === 'none' || !prediction) {
+    return (
+      <div className="text-[10px] font-black uppercase tracking-wider text-white/20">
+        –
+      </div>
+    );
+  }
 
-  const config = {
-    exact: {
-      icon: <Target size={10} />,
-      label: 'Cravou Placar',
-      className: 'text-primary bg-primary/10 border-primary/20',
-    },
-    winner: {
-      icon: <Check size={10} />,
-      label: 'Acertou Vencedor',
-      className: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
-    },
-    miss: {
-      icon: <X size={10} />,
-      label: 'Não Acertou',
-      className: 'text-red-400 bg-red-400/10 border-red-400/20',
-    },
-  };
+  const palpiteStr = `${prediction.home}X${prediction.away}`;
 
-  const c = config[result];
-
+  if (result === 'exact') {
+    return (
+      <div className="text-[10px] font-black uppercase tracking-wider">
+        <span className="text-primary">CRAVOU</span>
+        <span className="text-white/45"> – PALPITE: {palpiteStr}</span>
+      </div>
+    );
+  }
+  if (result === 'winner') {
+    return (
+      <div className="text-[10px] font-black uppercase tracking-wider">
+        <span className="text-yellow-400">ACERTOU VENCEDOR</span>
+        <span className="text-white/45"> – PALPITE: {palpiteStr}</span>
+      </div>
+    );
+  }
+  
   return (
-    <div className={`inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full border ${c.className}`}>
-      {c.icon} {c.label}
+    <div className="text-[10px] font-black uppercase tracking-wider">
+      <span className="text-red-500">ERROU</span>
+      <span className="text-white/45"> – PALPITE: {palpiteStr}</span>
     </div>
   );
 }
