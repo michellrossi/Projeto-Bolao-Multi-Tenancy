@@ -2,7 +2,7 @@ import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { useLeague } from '../hooks/useLeague';
 import { useRanking } from '../hooks/useRanking';
-import { Trophy, TrendingUp, TrendingDown, Minus, Crown } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown, Minus, Crown, Target, Check, X } from 'lucide-react';
 import type { UserRanking } from '../lib/types';
 
 export default function RankingPage() {
@@ -159,6 +159,7 @@ function RankingRow({
             )}
           </div>
           <TrendIndicator trend={player.trend} value={player.trendValue} />
+            <LastMatchBadge result={player.lastMatchResult} />
         </div>
       </div>
       <div className="text-right">
@@ -189,6 +190,36 @@ function TrendIndicator({ trend, value }: { trend: UserRanking['trend']; value: 
   return (
     <div className="flex items-center gap-1 text-[9px] font-black text-white/50 uppercase">
       <Minus size={10} /> Manteve posição
+    </div>
+  );
+}
+
+function LastMatchBadge({ result }: { result: UserRanking['lastMatchResult'] }) {
+  if (result === 'none') return null;
+
+  const config = {
+    exact: {
+      icon: <Target size={10} />,
+      label: 'Cravou Placar',
+      className: 'text-primary bg-primary/10 border-primary/20',
+    },
+    winner: {
+      icon: <Check size={10} />,
+      label: 'Acertou Vencedor',
+      className: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
+    },
+    miss: {
+      icon: <X size={10} />,
+      label: 'Não Acertou',
+      className: 'text-red-400 bg-red-400/10 border-red-400/20',
+    },
+  };
+
+  const c = config[result];
+
+  return (
+    <div className={`inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full border ${c.className}`}>
+      {c.icon} {c.label}
     </div>
   );
 }

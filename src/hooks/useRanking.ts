@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { calculatePoints } from '../lib/scoring';
+import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
 import type { UserRanking, ResultsMap, PredictionsMap, LeagueMember } from '../lib/types';
 
 /**
@@ -22,7 +23,7 @@ export function useRanking(leagueId: string | null) {
       // 1. Resultados oficiais
       const { data: resultsData } = await supabase.from('results').select('match_id, home_score, away_score');
       const resultsMap: ResultsMap = {};
-      resultsData?.forEach(r => {
+      resultsData?.forEach((r: any) => {
         resultsMap[r.match_id] = { home: r.home_score, away: r.away_score };
       });
 
@@ -99,6 +100,26 @@ export function useRanking(leagueId: string | null) {
         finalResultsMap['g1-2'] = { home: 1, away: 1 };
       }
 
+      // Encontrar a última partida finalizada com base na data e hora dos jogos (calendário oficial)
+      let lastUpdatedMatchId: string | null = null;
+      let maxMatchDateTime = 0;
+
+      const allMatches = WORLD_CUP_2026_ROUNDS.flatMap(r => r.matches);
+      allMatches.forEach(match => {
+        if (finalResultsMap[match.id]) {
+          const matchDateTime = new Date(`${match.date}T${match.time}`).getTime();
+          if (matchDateTime > maxMatchDateTime) {
+            maxMatchDateTime = matchDateTime;
+            lastUpdatedMatchId = match.id;
+          }
+        }
+      });
+
+      // Se for a liga Demo e não achou no calendário oficial, pega a última da demo
+      if (isDemo && !lastUpdatedMatchId) {
+        lastUpdatedMatchId = 'g1-2';
+      }
+
       // 5. Cálculo de pontos + tendência
       const rankingList: UserRanking[] = finalMembers.map(member => {
         const profile = member.users;
@@ -106,15 +127,36 @@ export function useRanking(leagueId: string | null) {
         const userPreds = allPredictions[userId] ?? {};
 
         let totalPoints = 0;
+        let prevPoints = 0;
         Object.entries(userPreds).forEach(([matchId, pred]) => {
           const result = finalResultsMap[matchId];
           if (result) {
-            totalPoints += calculatePoints(
+            const pts = calculatePoints(
               { homeScore: pred.home, awayScore: pred.away },
               { homeScore: result.home, awayScore: result.away }
             );
+            totalPoints += pts;
+            if (matchId !== lastUpdatedMatchId) {
+              prevPoints += pts;
+            }
           }
         });
+
+        // Determina resultado do palpite na última partida atualizada
+        let lastMatchResult: 'exact' | 'winner' | 'miss' | 'none' = 'none';
+        if (lastUpdatedMatchId) {
+          const lastPred = userPreds[lastUpdatedMatchId];
+          const lastResult = finalResultsMap[lastUpdatedMatchId];
+          if (lastPred && lastResult) {
+            const pts = calculatePoints(
+              { homeScore: lastPred.home, awayScore: lastPred.away },
+              { homeScore: lastResult.home, awayScore: lastResult.away }
+            );
+            if (pts === 3) lastMatchResult = 'exact';
+            else if (pts === 1) lastMatchResult = 'winner';
+            else lastMatchResult = 'miss';
+          }
+        }
 
         return {
           id: userId,
@@ -123,6 +165,8 @@ export function useRanking(leagueId: string | null) {
           points: totalPoints,
           trend: 'stable' as const,
           trendValue: 0,
+          lastMatchResult,
+          prevPoints, // campo temporário para cálculo da tendência
         };
       });
 
@@ -131,29 +175,46 @@ export function useRanking(leagueId: string | null) {
         return a.name.localeCompare(b.name);
       });
 
-      // Calcula tendência comparando com snapshot anterior (localStorage)
-      const snapshotKey = `ranking_snapshot_${leagueId}`;
-      const prevSnapshotRaw = localStorage.getItem(snapshotKey);
-      if (prevSnapshotRaw) {
-        const prevPositions: Record<string, number> = JSON.parse(prevSnapshotRaw);
+      // Calcula tendência comparando a classificação atual com a classificação sem o último jogo
+      if (lastUpdatedMatchId) {
+        const prevRankingList = rankingList.map(p => ({
+          id: p.id,
+          name: p.name,
+          points: (p as any).prevPoints,
+        }));
+
+        prevRankingList.sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return a.name.localeCompare(b.name);
+        });
+
+        const prevPositions: Record<string, number> = {};
+        prevRankingList.forEach((player, posIndex) => {
+          prevPositions[player.id] = posIndex;
+        });
+
         rankingList.forEach((player, currentPos) => {
           const prevPos = prevPositions[player.id];
-          if (prevPos === undefined) return;
-          const diff = prevPos - currentPos; // positivo = subiu
-          if (diff > 0) {
-            player.trend = 'up';
-            player.trendValue = diff;
-          } else if (diff < 0) {
-            player.trend = 'down';
-            player.trendValue = Math.abs(diff);
+          if (prevPos !== undefined) {
+            const diff = prevPos - currentPos; // positivo = subiu
+            if (diff > 0) {
+              player.trend = 'up';
+              player.trendValue = diff;
+            } else if (diff < 0) {
+              player.trend = 'down';
+              player.trendValue = Math.abs(diff);
+            } else {
+              player.trend = 'stable';
+              player.trendValue = 0;
+            }
           }
         });
       }
 
-      // Salva snapshot atual para próxima comparação
-      const newSnapshot: Record<string, number> = {};
-      rankingList.forEach((p, i) => { newSnapshot[p.id] = i; });
-      localStorage.setItem(snapshotKey, JSON.stringify(newSnapshot));
+      // Limpa a propriedade temporária prevPoints
+      rankingList.forEach(p => {
+        delete (p as any).prevPoints;
+      });
 
       setRankings(rankingList);
     } catch (error) {
