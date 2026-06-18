@@ -128,6 +128,10 @@ export function useRanking(leagueId: string | null) {
 
         let totalPoints = 0;
         let prevPoints = 0;
+        let exactCount = 0;
+        let winnerCount = 0;
+        let missCount = 0;
+
         Object.entries(userPreds).forEach(([matchId, pred]) => {
           const result = finalResultsMap[matchId];
           if (result) {
@@ -136,6 +140,11 @@ export function useRanking(leagueId: string | null) {
               { homeScore: result.home, awayScore: result.away }
             );
             totalPoints += pts;
+            
+            if (pts === 3) exactCount++;
+            else if (pts === 1) winnerCount++;
+            else missCount++;
+
             if (matchId !== lastUpdatedMatchId) {
               prevPoints += pts;
             }
@@ -166,6 +175,9 @@ export function useRanking(leagueId: string | null) {
           trend: 'stable' as const,
           trendValue: 0,
           lastMatchResult,
+          exactCount,
+          winnerCount,
+          missCount,
           prevPoints, // campo temporário para cálculo da tendência
         };
       });

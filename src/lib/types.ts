@@ -60,6 +60,9 @@ export interface UserRanking {
   isOwner?: boolean;
   /** Resultado do palpite na última partida atualizada */
   lastMatchResult: 'exact' | 'winner' | 'miss' | 'none';
+  exactCount: number;
+  winnerCount: number;
+  missCount: number;
 }
 
 /** Mapa de resultados indexados por match_id */

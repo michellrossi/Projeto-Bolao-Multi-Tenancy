@@ -158,8 +158,21 @@ function RankingRow({
               </span>
             )}
           </div>
-          <TrendIndicator trend={player.trend} value={player.trendValue} />
+          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+            <TrendIndicator trend={player.trend} value={player.trendValue} />
             <LastMatchBadge result={player.lastMatchResult} />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <span className="inline-flex items-center gap-1 text-[9px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10 uppercase tracking-wider">
+              <Target size={10} /> {player.exactCount} {player.exactCount === 1 ? 'Cravada' : 'Cravadas'}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[9px] font-black text-yellow-400 bg-yellow-400/5 px-2 py-0.5 rounded-full border border-yellow-400/10 uppercase tracking-wider">
+              <Check size={10} /> {player.winnerCount} {player.winnerCount === 1 ? 'Acertou Vencedor' : 'Acertou Vencedor'}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[9px] font-black text-red-400 bg-red-400/5 px-2 py-0.5 rounded-full border border-red-400/10 uppercase tracking-wider">
+              <X size={10} /> {player.missCount} {player.missCount === 1 ? 'Não Acertou' : 'Não Acertou'}
+            </span>
+          </div>
         </div>
       </div>
       <div className="text-right">
