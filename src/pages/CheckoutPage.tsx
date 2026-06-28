@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ShieldCheck, Lock, CreditCard, ArrowLeft, Loader2, CheckCircle2, QrCode, Copy } from 'lucide-react';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type Key } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -154,7 +154,7 @@ export default function UsersPage() {
       {/* Member cards */}
       <div className="grid gap-4 md:grid-cols-2">
         <AnimatePresence mode="popLayout">
-          {filteredMembers.map(member => (
+          {filteredMembers.map((member: UserProfile) => (
             <MemberCard
               key={member.id}
               member={member}
@@ -207,10 +207,11 @@ function MemberCard({
   onToggleApproval,
   onDelete,
 }: {
+  key?: Key;
   member: UserProfile;
   predictionCount: number;
-  onToggleApproval: (id: string, currentStatus: boolean) => void;
-  onDelete: (id: string) => void;
+  onToggleApproval: (id: string, currentStatus: boolean) => void | Promise<void>;
+  onDelete: (id: string) => void | Promise<void>;
 }) {
   return (
     <motion.div

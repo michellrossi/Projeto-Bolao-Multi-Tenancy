@@ -73,8 +73,8 @@ export function useLeagueMembers(leagueId: string | null) {
   useEffect(() => {
     fetchData();
 
-    const sub = supabase
-      .channel(`league_members_${leagueId}`)
+    const sub = (supabase
+      .channel(`league_members_${leagueId}`) as any)
       .on('postgres_changes', {
         event: '*',
         table: 'league_members',

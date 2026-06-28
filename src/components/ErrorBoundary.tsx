@@ -1,4 +1,4 @@
-import { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -11,10 +11,13 @@ interface State {
   error?: Error;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false
-  };
+  constructor(props: Props) {
+    super(props);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (this as any).state = { hasError: false } as State;
+  }
 
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -25,9 +28,14 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const self = this as any;
+    const props = self.props as Props;
+    const state = self.state as State;
+
+    if (state.hasError) {
+      if (props.fallback) {
+        return props.fallback;
       }
 
       return (
@@ -49,6 +57,6 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    return props.children;
   }
 }

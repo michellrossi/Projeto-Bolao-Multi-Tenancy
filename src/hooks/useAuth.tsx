@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
@@ -23,7 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   maxParticipantsAllowed: 0,
 });
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
@@ -51,8 +51,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel(`profile_changes_${user.id}`)
+    const channel = (supabase
+      .channel(`profile_changes_${user.id}`) as any)
       .on('postgres_changes', { 
         event: 'UPDATE', 
         table: 'users', 

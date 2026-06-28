@@ -1,5 +1,8 @@
+import type { ReactNode } from 'react';
+
 export default function PrivacidadePage() {
   return (
+
     <div className="min-h-screen bg-dark text-white">
       <div className="max-w-3xl mx-auto px-6 py-20 space-y-12">
         {/* Header */}
@@ -144,7 +147,7 @@ export default function PrivacidadePage() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-3">
       <h2 className="text-white font-black text-lg uppercase tracking-tight">{title}</h2>

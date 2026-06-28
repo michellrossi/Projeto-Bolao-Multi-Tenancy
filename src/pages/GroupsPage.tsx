@@ -24,7 +24,7 @@ export default function GroupsPage() {
 
     fetchResults();
 
-    const sub = supabase.channel('groups_results').on('postgres_changes', { event: '*', table: 'results' }, fetchResults).subscribe();
+    const sub = (supabase.channel('groups_results') as any).on('postgres_changes', { event: '*', table: 'results' }, fetchResults).subscribe();
 
     return () => {
       sub.unsubscribe();
@@ -36,7 +36,7 @@ export default function GroupsPage() {
     
     groupTeams.forEach(team => {
       stats[team] = {
-        name: team, points: 0, played: 0, wins: 0, draws: 0, losses: 0,
+        name: team, group: '', points: 0, played: 0, wins: 0, draws: 0, losses: 0,
         goalsFor: 0, goalsAgainst: 0, goalDifference: 0
       };
     });

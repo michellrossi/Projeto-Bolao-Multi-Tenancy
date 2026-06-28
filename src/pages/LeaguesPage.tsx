@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -176,9 +176,11 @@ export default function LeaguesPage() {
 
     try {
       // 1. Find the league by invite code via RPC (seguro contra RLS aberto)
-      const { data: league, error: findError } = await supabase
+      const { data: leagueRaw, error: findError } = await supabase
         .rpc('find_league_by_code', { _code: inviteCode.trim().toUpperCase() })
         .maybeSingle();
+
+      const league = leagueRaw as any;
 
       if (findError || !league) {
         setError('Código de convite inválido.');

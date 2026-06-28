@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 export default function TermosPage() {
   return (
     <div className="min-h-screen bg-dark text-white">
@@ -121,7 +123,7 @@ export default function TermosPage() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-3">
       <h2 className="text-white font-black text-lg uppercase tracking-tight">{title}</h2>

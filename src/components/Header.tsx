@@ -59,8 +59,8 @@ export function Header() {
     fetchLeagueData();
 
     if (currentLeagueId) {
-      const sub = supabase
-        .channel(`header_league_${currentLeagueId}`)
+      const sub = (supabase
+        .channel(`header_league_${currentLeagueId}`) as any)
         .on('postgres_changes', { event: '*', table: 'leagues', filter: `id=eq.${currentLeagueId}` }, fetchLeagueData)
         .subscribe();
       return () => { sub.unsubscribe(); };
@@ -81,14 +81,14 @@ export function Header() {
 
     fetchUserData();
 
-    const sub = supabase
-      .channel(`header_user_${user.id}`)
+    const sub = (supabase
+      .channel(`header_user_${user.id}`) as any)
       .on('postgres_changes', { event: '*', table: 'users', filter: `id=eq.${user.id}` }, fetchUserData)
       .subscribe();
 
     const checkUpcomingMatches = () => {
       const now = new Date();
-      const upcoming: { id: string; date: string; time: string }[] = [];
+      const upcoming: { id: string; title: string; message: string; type: string }[] = [];
       
       WORLD_CUP_2026_ROUNDS.flatMap(r => r.matches).forEach(match => {
         const [day, month, year] = match.date.split('/').map(Number);

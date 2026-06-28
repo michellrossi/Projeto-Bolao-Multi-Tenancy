@@ -17,7 +17,7 @@ export default function PredictionsPage() {
   const { currentLeagueId, isApproved, loading: leagueLoading } = useLeague();
   const [activeTab, setActiveTab] = useState("1ª Rodada");
   const [predictions, setPredictions] = useState<Record<string, { home: number; away: number }>>({});
-  const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
+  const [results, setResults] = useState<Record<string, { home: number; away: number; penalty_winner?: string }>>({});
   const [loading, setLoading] = useState(true);
   const [drafts, setDrafts] = useState<Record<string, { home: string; away: string }>>({});
   const [savingActive, setSavingActive] = useState(false);
@@ -26,7 +26,8 @@ export default function PredictionsPage() {
   const activeRound = WORLD_CUP_2026_ROUNDS.find(r => r.name === activeTab);
   const standings = useMemo(() => getGroupStandings(
     Object.entries(results).reduce((acc: Record<string, { homeScore: number; awayScore: number }>, [id, res]) => {
-      acc[id] = { homeScore: res.home, awayScore: res.away };
+      const r = res as { home: number; away: number };
+      acc[id] = { homeScore: r.home, awayScore: r.away };
       return acc;
     }, {})
   ), [results]);
@@ -36,8 +37,8 @@ export default function PredictionsPage() {
     try {
       const { data } = await supabase.from('results').select('*').range(0, 199);
       if (data) {
-        const resMap: Record<string, { home: number; away: number }> = {};
-        data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score });
+        const resMap: Record<string, { home: number; away: number; penalty_winner?: string }> = {};
+        data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score, penalty_winner: r.penalty_winner });
         
         // Fallback demo results
         const isDemo = currentLeagueId === '99999999-9999-9999-9999-999999999999';
@@ -92,13 +93,13 @@ export default function PredictionsPage() {
     fetchPredictions();
 
     // Subscriptions
-    const resultsSub = supabase
-      .channel(`results_${currentLeagueId}`)
+    const resultsSub = (supabase
+      .channel(`results_${currentLeagueId}`) as any)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'results' }, fetchResults)
       .subscribe();
 
-    const predsSub = supabase
-      .channel(`preds_${currentLeagueId}_${user.id}`)
+    const predsSub = (supabase
+      .channel(`preds_${currentLeagueId}_${user.id}`) as any)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -134,8 +135,9 @@ export default function PredictionsPage() {
       if (isDemo && user.id === '00000000-0000-0000-0000-000000000000') {
         const newPreds = { ...predictions };
         Object.entries(drafts).forEach(([matchId, draft]) => {
-          if (draft.home !== '' && draft.away !== '') {
-            newPreds[matchId] = { home: Number(draft.home), away: Number(draft.away) };
+          const d = draft as { home: string; away: string };
+          if (d.home !== '' && d.away !== '') {
+            newPreds[matchId] = { home: Number(d.home), away: Number(d.away) };
           }
         });
         setPredictions(newPreds);
@@ -146,13 +148,13 @@ export default function PredictionsPage() {
       }
 
       const toUpsert = Object.entries(drafts)
-        .filter(([_, draft]) => draft.home !== '' && draft.away !== '')
+        .filter(([_, draft]) => (draft as any).home !== '' && (draft as any).away !== '')
         .map(([matchId, draft]) => ({
           league_id: currentLeagueId,
           user_id: user.id,
           match_id: matchId,
-          home_score: Number(draft.home),
-          away_score: Number(draft.away),
+          home_score: Number((draft as any).home),
+          away_score: Number((draft as any).away),
           updated_at: new Date().toISOString()
         }));
 
@@ -204,8 +206,8 @@ export default function PredictionsPage() {
   const currentMatches = activeTab === "Mata-Mata"
     ? KNOCKOUT_MATCHES.map(m => ({
       ...m,
-      homeTeam: getKnockoutTeam(standings, m.homePlaceholder, {} as Standings),
-      awayTeam: getKnockoutTeam(standings, m.awayPlaceholder, {} as Standings),
+      homeTeam: m.homeTeam || getKnockoutTeam(m.homePlaceholder, results, KNOCKOUT_MATCHES),
+      awayTeam: m.awayTeam || getKnockoutTeam(m.awayPlaceholder, results, KNOCKOUT_MATCHES),
       group: m.phase
     }))
     : activeRound?.matches || [];

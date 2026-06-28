@@ -1,15 +1,20 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { WORLD_CUP_2026_ROUNDS, Match } from '../lib/matches';
+import { KNOCKOUT_MATCHES } from '../lib/knockout';
+import { getKnockoutTeam } from '../lib/scoring';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { getFlagUrl } from '../lib/flags';
-import { Save, Lock, Edit3, Trash2 } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
+
+const TABS = [...WORLD_CUP_2026_ROUNDS.map(r => r.name), "Mata-Mata"];
 
 export default function TablePage() {
   const { isAdmin } = useAuth();
-  const [results, setResults] = useState<Record<string, { home: number; away: number }>>({});
+  const [activeTab, setActiveTab] = useState("1ª Rodada");
+  const [results, setResults] = useState<Record<string, { home: number; away: number; penalty_winner?: string }>>({});
   const [loading, setLoading] = useState(true);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -29,8 +34,8 @@ export default function TablePage() {
     const fetchResults = async () => {
       const { data } = await supabase.from('results').select('*');
       if (data) {
-        const resMap: Record<string, { home: number; away: number }> = {};
-        data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score });
+        const resMap: Record<string, { home: number; away: number; penalty_winner?: string }> = {};
+        data.forEach(r => resMap[r.match_id] = { home: r.home_score, away: r.away_score, penalty_winner: r.penalty_winner });
         setResults(resMap);
       }
       setLoading(false);
@@ -38,50 +43,30 @@ export default function TablePage() {
 
     fetchResults();
 
-    const sub = supabase.channel('table_results').on('postgres_changes', { event: '*', table: 'results' }, fetchResults).subscribe();
+    const sub = supabase.channel('table_results').on('postgres_changes' as any, { event: '*', table: 'results' }, fetchResults).subscribe();
 
     return () => {
       sub.unsubscribe();
     };
   }, []);
 
-  const handleSaveResult = async (matchId: string, home: number | string, away: number | string) => {
-    if (home === '' || away === '') return;
-    try {
-      const { error } = await supabase.from('results').upsert({
-        match_id: matchId,
-        home_score: Number(home),
-        away_score: Number(away),
-        updated_at: new Date().toISOString()
-      });
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error saving result:", error);
-    }
-  };
-
-  const handleResetResult = (matchId: string) => {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Resetar Resultado',
-      message: 'Tem certeza que deseja resetar o resultado oficial deste jogo? Isso afetará os rankings e palpites dos usuários.',
-      variant: 'danger',
-      onConfirm: async () => {
-        try {
-          const { error } = await supabase.from('results').delete().eq('match_id', matchId);
-          if (error) throw error;
-        } catch (error) {
-          console.error("Error resetting result:", error);
-        }
-      }
-    });
-  };
-
   if (loading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
+
+  const activeRound = WORLD_CUP_2026_ROUNDS.find(r => r.name === activeTab);
+  const currentMatches = activeTab === "Mata-Mata"
+    ? KNOCKOUT_MATCHES.map(m => ({
+      id: m.id,
+      group: m.phase,
+      homeTeam: m.homeTeam || getKnockoutTeam(m.homePlaceholder, results, KNOCKOUT_MATCHES),
+      awayTeam: m.awayTeam || getKnockoutTeam(m.awayPlaceholder, results, KNOCKOUT_MATCHES),
+      date: m.date,
+      time: m.time
+    }))
+    : activeRound?.matches || [];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-white font-lexend tracking-tight uppercase mb-2">
             Tabela de <span className="text-primary">Resultados</span>
@@ -90,47 +75,87 @@ export default function TablePage() {
             {isAdmin ? 'Área do Administrador: Insira os resultados oficiais.' : 'Acompanhe os resultados oficiais de cada partida.'}
           </p>
         </div>
-        {isAdmin && (
-          <div className="bg-primary/10 text-primary px-4 py-2 rounded-xl border border-primary/20 text-xs font-black uppercase tracking-widest flex items-center gap-2">
-            <Edit3 className="w-4 h-4" />
-            Modo Edição Ativo
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        {/* Desktop Table View */}
-        <div className="hidden md:block glass-dark rounded-[2.5rem] overflow-hidden border-white/5">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-white/5">
-                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 w-32">Data/Hora</th>
-                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 text-center">Partida</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {WORLD_CUP_2026_ROUNDS.flatMap(r => r.matches).map((match) => (
-                <ResultRow 
-                  key={match.id} 
-                  match={match} 
-                  savedResult={results[match.id]} 
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Cards View */}
-        <div className="md:hidden space-y-4">
-          {WORLD_CUP_2026_ROUNDS.flatMap(r => r.matches).map((match) => (
-            <ResultCard
-              key={match.id}
-              match={match}
-              savedResult={results[match.id]}
-            />
+        
+        {/* Navigation Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap border ${activeTab === tab
+                  ? 'bg-primary text-dark border-primary glow-primary'
+                  : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                }`}
+            >
+              {tab}
+            </button>
           ))}
         </div>
       </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="space-y-4"
+        >
+          {/* Desktop Table View */}
+          <div className="hidden md:block glass-dark rounded-[2.5rem] overflow-hidden border-white/5">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-white/5">
+                  <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 w-32">Data/Hora</th>
+                  <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 text-center">Partida</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {currentMatches.map((match, idx) => {
+                  const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx - 1].group !== match.group);
+                  return (
+                    <React.Fragment key={match.id}>
+                      {showPhase && (
+                        <tr>
+                          <td colSpan={2} className="bg-white/5 px-6 py-3">
+                            <h3 className="text-xs font-black text-secondary font-lexend uppercase tracking-widest">
+                              {match.group}
+                            </h3>
+                          </td>
+                        </tr>
+                      )}
+                      <ResultRow 
+                        match={match as any} 
+                        savedResult={results[match.id]} 
+                      />
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards View */}
+          <div className="md:hidden space-y-4">
+            {currentMatches.map((match, idx) => {
+              const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx - 1].group !== match.group);
+              return (
+                <React.Fragment key={match.id}>
+                  {showPhase && (
+                    <h3 className="text-xs font-black text-secondary font-lexend uppercase tracking-widest mt-6 mb-2 pl-4 border-l-2 border-secondary">
+                      {match.group}
+                    </h3>
+                  )}
+                  <ResultCard
+                    match={match as any}
+                    savedResult={results[match.id]}
+                  />
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </motion.div>
+      </AnimatePresence>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -144,12 +169,13 @@ export default function TablePage() {
   );
 }
 
-function ResultCard({ match, savedResult }: { match: Match; savedResult: { home: number; away: number } | undefined; }) {
+function ResultCard({ match, savedResult }: { match: Match; savedResult: { home: number; away: number; penalty_winner?: string } | undefined; }) {
+  const isKnockout = isNaN(Number(match.id));
   return (
     <div className="glass-dark p-6 rounded-[2rem] border-white/5 space-y-6">
       <div className="flex justify-between items-center">
         <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full">
-          Grupo {match.group}
+          {isKnockout ? match.group : `Grupo ${match.group}`}
         </span>
         <div className="text-right">
           <p className="text-xs font-bold text-white/80">{match.date.split('-').reverse().join('/')}</p>
@@ -164,10 +190,17 @@ function ResultCard({ match, savedResult }: { match: Match; savedResult: { home:
         </div>
         
         <div className="flex items-center gap-2">
-          <div className="bg-white/5 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-2">
-            <span className="text-lg font-black text-white">{savedResult?.home ?? '-'}</span>
-            <span className="text-white/20">-</span>
-            <span className="text-lg font-black text-white">{savedResult?.away ?? '-'}</span>
+          <div className="flex flex-col items-center bg-white/5 px-4 py-2 rounded-xl border border-white/5 gap-1">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-black text-white">{savedResult?.home ?? '-'}</span>
+              <span className="text-white/20">-</span>
+              <span className="text-lg font-black text-white">{savedResult?.away ?? '-'}</span>
+            </div>
+            {savedResult && savedResult.home === savedResult.away && savedResult.penalty_winner && (
+              <span className="text-[8px] font-black text-yellow-400 uppercase tracking-widest">
+                Pen: {savedResult.penalty_winner}
+              </span>
+            )}
           </div>
         </div>
 
@@ -180,7 +213,7 @@ function ResultCard({ match, savedResult }: { match: Match; savedResult: { home:
   );
 }
 
-function ResultRow({ match, savedResult }: { match: Match; savedResult: { home: number; away: number } | undefined; }) {
+function ResultRow({ match, savedResult }: { match: Match; savedResult: { home: number; away: number; penalty_winner?: string } | undefined; }) {
   return (
     <tr className="hover:bg-white/[0.02] transition-colors group">
       <td className="px-6 py-4">
@@ -196,11 +229,18 @@ function ResultRow({ match, savedResult }: { match: Match; savedResult: { home: 
             <span className="text-xs font-bold text-white/80 text-center truncate w-full">{match.homeTeam}</span>
           </div>
           
-          <div className="flex items-center justify-center gap-2 min-w-[110px]">
-            <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
-              <span className="text-xl font-black text-white">{savedResult?.home ?? '-'}</span>
-              <span className="text-white/20 font-bold">-</span>
-              <span className="text-xl font-black text-white">{savedResult?.away ?? '-'}</span>
+          <div className="flex items-center justify-center gap-2 min-w-[140px]">
+            <div className="flex flex-col items-center gap-1 bg-white/5 px-4 py-2 rounded-xl border border-white/5 w-full">
+              <div className="flex items-center gap-3">
+                <span className="text-xl font-black text-white">{savedResult?.home ?? '-'}</span>
+                <span className="text-white/20 font-bold">-</span>
+                <span className="text-xl font-black text-white">{savedResult?.away ?? '-'}</span>
+              </div>
+              {savedResult && savedResult.home === savedResult.away && savedResult.penalty_winner && (
+                <span className="text-[8px] font-black text-yellow-400 uppercase tracking-widest text-center">
+                  Pen: {savedResult.penalty_winner}
+                </span>
+              )}
             </div>
           </div>
 

@@ -46,7 +46,11 @@ const TEAM_FLAGS: Record<string, string> = {
   "Inglaterra": "gb-eng",
   "Croácia": "hr",
   "Gana": "gh",
-  "Panamá": "pa"
+  "Panamá": "pa",
+  "EUA": "us",
+  "R.D. Congo": "cd",
+  "C. do Marfim": "ci",
+  "Bósnia e H.": "ba"
 };
 
 export function getFlagUrl(teamName: string): string {

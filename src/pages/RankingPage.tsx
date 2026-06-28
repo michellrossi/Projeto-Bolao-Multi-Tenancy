@@ -1,3 +1,4 @@
+import { type Key } from 'react';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { useLeague } from '../hooks/useLeague';
@@ -68,7 +69,7 @@ export default function RankingPage() {
 
         <div className="space-y-3 px-2">
           {rankings.length > 0 ? (
-            rankings.map((player, index) => (
+            rankings.map((player: UserRanking, index: number) => (
               <RankingRow
                 key={player.id}
                 player={player}
@@ -142,6 +143,7 @@ function RankingRow({
   index,
   isCurrentUser,
 }: {
+  key?: Key;
   player: UserRanking;
   index: number;
   isCurrentUser: boolean;

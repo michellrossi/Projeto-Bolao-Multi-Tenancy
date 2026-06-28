@@ -3,7 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Mail, Github, LogIn, Lock, User as UserIcon, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export function LoginPage() {
   const navigate = useNavigate();

@@ -88,8 +88,8 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     fetchStatus();
 
     // Listener em tempo real para mudanças de status na liga
-    const channel = supabase
-      .channel(`member_status_${currentLeagueId}_${user.id}`)
+    const channel = (supabase
+      .channel(`member_status_${currentLeagueId}_${user.id}`) as any)
       .on('postgres_changes', {
         event: '*',
         table: 'league_members',

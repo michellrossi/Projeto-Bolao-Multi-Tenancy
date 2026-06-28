@@ -34,18 +34,17 @@ export function calculatePoints(prediction: GameResult, official: GameResult): n
 }
 
 export function isMatchLocked(matchDate: string, matchTime: string, isGroupStage: boolean = false): boolean {
-  const LOCK_TIME = 30 * 60 * 1000;
-  let targetDateTime: Date;
+  const now = new Date();
 
   if (isGroupStage) {
     const firstMatch = WORLD_CUP_2026_ROUNDS[0].matches[0];
-    targetDateTime = new Date(`${firstMatch.date}T${firstMatch.time}`);
+    const targetDateTime = new Date(`${firstMatch.date}T${firstMatch.time}`);
+    const LOCK_TIME = 30 * 60 * 1000;
+    return (targetDateTime.getTime() - now.getTime()) <= LOCK_TIME;
   } else {
-    targetDateTime = new Date(`${matchDate}T${matchTime}`);
+    const limitDateTime = new Date('2026-06-28T15:55:00');
+    return now.getTime() >= limitDateTime.getTime();
   }
-
-  const now = new Date();
-  return (targetDateTime.getTime() - now.getTime()) <= LOCK_TIME;
 }
 
 export function getGroupStandings(results: Record<string, GameResult>) {
@@ -112,38 +111,57 @@ export function getGroupStandings(results: Record<string, GameResult>) {
 }
 
 export function getKnockoutTeam(
-  standings: Record<string, TeamStats[]>, 
   placeholder: string,
-  results: Record<string, GameResult>
+  results: Record<string, { home: number; away: number; penalty_winner?: string }>,
+  knockoutMatches: any[]
 ): string {
-  // Case 1: Xº do Grupo Y
-  const groupMatch = placeholder.match(/(\d)º do Grupo ([A-L])/);
-  if (groupMatch) {
-    const pos = parseInt(groupMatch[1]) - 1;
-    const groupId = groupMatch[2];
-    return standings[groupId]?.[pos]?.name || placeholder;
-  }
+  if (!placeholder) return '';
 
-  // Case 2: 3º do Grupo (X, Y, Z...)
-  // For simplicity in this Bolão, let's just pick the best 3rd from the listed groups
-  if (placeholder.includes('3º do Grupo')) {
-    const groupsMatch = placeholder.match(/\(([A-L, ]+)\)/);
-    if (groupsMatch) {
-      const allowedGroups = groupsMatch[1].split(/[ ,]+/).map(s => s.trim());
-      const thirdPlaces = allowedGroups
-        .map(id => standings[id]?.[2])
-        .filter(t => t && t.played > 0)
-        .sort((a, b) => {
-          if (b.points !== a.points) return b.points - a.points;
-          if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
-          return b.wins - a.wins;
-        });
-      return thirdPlaces[0]?.name || placeholder;
+  // 1. Vencedor de um jogo anterior
+  const winnerMatch = placeholder.match(/Vencedor (?:Jogo )?([M-QF1-3]+)/i);
+  if (winnerMatch) {
+    const prevMatchId = winnerMatch[1];
+    const prevMatch = knockoutMatches.find(m => m.id === prevMatchId);
+    if (!prevMatch) return placeholder;
+
+    const res = results[prevMatchId];
+    if (!res) return placeholder; // Sem resultado ainda
+
+    const homeTeamName = prevMatch.homeTeam || getKnockoutTeam(prevMatch.homePlaceholder, results, knockoutMatches);
+    const awayTeamName = prevMatch.awayTeam || getKnockoutTeam(prevMatch.awayPlaceholder, results, knockoutMatches);
+
+    if (res.home > res.away) {
+      return homeTeamName;
+    } else if (res.away > res.home) {
+      return awayTeamName;
+    } else {
+      return res.penalty_winner || homeTeamName;
     }
   }
 
-  // Case 3: Vencedor Jogo X
-  // Case 4: Perdedor Semi X
-  // This would require recursive resolving. For now, we return the placeholder.
+  // 2. Perdedor de um jogo anterior (Disputa de 3º lugar)
+  const loserMatch = placeholder.match(/Perdedor (?:Semi )?([M-QF1-3]+)/i);
+  if (loserMatch) {
+    const prevMatchId = loserMatch[1];
+    const prevMatch = knockoutMatches.find(m => m.id === prevMatchId);
+    if (!prevMatch) return placeholder;
+
+    const res = results[prevMatchId];
+    if (!res) return placeholder;
+
+    const homeTeamName = prevMatch.homeTeam || getKnockoutTeam(prevMatch.homePlaceholder, results, knockoutMatches);
+    const awayTeamName = prevMatch.awayTeam || getKnockoutTeam(prevMatch.awayPlaceholder, results, knockoutMatches);
+
+    if (res.home > res.away) {
+      return awayTeamName;
+    } else if (res.away > res.home) {
+      return homeTeamName;
+    } else {
+      if (res.penalty_winner === homeTeamName) return awayTeamName;
+      if (res.penalty_winner === awayTeamName) return homeTeamName;
+      return awayTeamName;
+    }
+  }
+
   return placeholder;
 }

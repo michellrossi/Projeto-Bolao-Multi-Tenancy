@@ -67,7 +67,7 @@ export function useRanking(leagueId: string | null) {
       }
 
       // Fallback para a Liga Demo caso o banco esteja vazio
-      let finalMembers = membersData as LeagueMember[] ?? [];
+      let finalMembers = (membersData as unknown as LeagueMember[]) ?? [];
       const isDemo = leagueId === '99999999-9999-9999-9999-999999999999';
       
       if (isDemo && finalMembers.length === 0) {
@@ -242,13 +242,13 @@ export function useRanking(leagueId: string | null) {
   useEffect(() => {
     fetchData();
 
-    const resultsSub = supabase
-      .channel('ranking_results')
+    const resultsSub = (supabase
+      .channel('ranking_results') as any)
       .on('postgres_changes', { event: '*', table: 'results' }, fetchData)
       .subscribe();
 
-    const predsSub = supabase
-      .channel('ranking_preds')
+    const predsSub = (supabase
+      .channel('ranking_preds') as any)
       .on('postgres_changes', {
         event: '*',
         table: 'predictions',

@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
+import { KNOCKOUT_MATCHES } from '../lib/knockout';
+import { getKnockoutTeam } from '../lib/scoring';
 import type { Match, Round } from '../lib/matches';
 import { getFlagUrl } from '../lib/flags';
 import { Loader2, Search, ChevronDown, ChevronRight, Save, Trash2 } from 'lucide-react';
@@ -13,6 +15,7 @@ interface ResultEntry {
   match_id: string;
   home_score: number;
   away_score: number;
+  penalty_winner?: string;
 }
 
 type ResultsStore = Record<string, ResultEntry>;
@@ -24,7 +27,7 @@ export default function AdminResultsPage() {
   const [results, setResults] = useState<ResultsStore>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [expandedRounds, setExpandedRounds] = useState<Record<string, boolean>>({ '1ª Rodada': true });
+  const [expandedRounds, setExpandedRounds] = useState<Record<string, boolean>>({ '1ª Rodada': true, 'Mata-Mata': true });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -40,7 +43,7 @@ export default function AdminResultsPage() {
   });
 
   const fetchResults = useCallback(async () => {
-    const { data } = await supabase.from('results').select('match_id, home_score, away_score');
+    const { data } = await supabase.from('results').select('match_id, home_score, away_score, penalty_winner');
     if (data) {
       const store: ResultsStore = {};
       data.forEach(r => { store[r.match_id] = r; });
@@ -50,10 +53,9 @@ export default function AdminResultsPage() {
 
   useEffect(() => {
     fetchResults();
-    // Real-time updates
     const sub = supabase
       .channel('admin_results')
-      .on('postgres_changes', { event: '*', table: 'results' }, fetchResults)
+      .on('postgres_changes' as any, { event: '*', table: 'results' }, fetchResults)
       .subscribe();
     return () => { sub.unsubscribe(); };
   }, [fetchResults]);
@@ -66,7 +68,7 @@ export default function AdminResultsPage() {
     );
   }
 
-  const saveResult = async (matchId: string, homeStr: string | number, awayStr: string | number) => {
+  const saveResult = async (matchId: string, homeStr: string | number, awayStr: string | number, penaltyWinner?: string) => {
     if (homeStr === '' || awayStr === '') return;
     const h = Number(homeStr);
     const a = Number(awayStr);
@@ -83,12 +85,26 @@ export default function AdminResultsPage() {
           const { error } = await supabase
             .from('results')
             .upsert(
-              { match_id: matchId, home_score: h, away_score: a, updated_at: new Date().toISOString() },
+              { 
+                match_id: matchId, 
+                home_score: h, 
+                away_score: a, 
+                penalty_winner: penaltyWinner || null,
+                updated_at: new Date().toISOString() 
+              },
               { onConflict: 'match_id' }
             );
           if (error) throw error;
 
-          setResults(prev => ({ ...prev, [matchId]: { match_id: matchId, home_score: h, away_score: a } }));
+          setResults(prev => ({ 
+            ...prev, 
+            [matchId]: { 
+              match_id: matchId, 
+              home_score: h, 
+              away_score: a, 
+              penalty_winner: penaltyWinner 
+            } 
+          }));
         } catch (err) {
           console.error('Error saving result:', err);
           alert('Erro ao salvar resultado. Tente novamente.');
@@ -120,8 +136,22 @@ export default function AdminResultsPage() {
     setExpandedRounds(prev => ({ ...prev, [name]: !prev[name] }));
   };
 
+  const knockoutRound: Round = {
+    name: "Mata-Mata",
+    matches: KNOCKOUT_MATCHES.map(m => ({
+      id: m.id,
+      group: m.phase,
+      homeTeam: m.homeTeam || getKnockoutTeam(m.homePlaceholder, results, KNOCKOUT_MATCHES),
+      awayTeam: m.awayTeam || getKnockoutTeam(m.awayPlaceholder, results, KNOCKOUT_MATCHES),
+      date: m.date,
+      time: m.time
+    }))
+  };
+
+  const allRounds = [...WORLD_CUP_2026_ROUNDS, knockoutRound];
+
   // Filter matches
-  const filteredRounds: Round[] = WORLD_CUP_2026_ROUNDS.map(round => ({
+  const filteredRounds: Round[] = allRounds.map(round => ({
     ...round,
     matches: round.matches.filter(m =>
       !search ||
@@ -132,7 +162,7 @@ export default function AdminResultsPage() {
   })).filter(r => r.matches.length > 0);
 
   const totalWithResults = Object.keys(results).length;
-  const totalMatches = WORLD_CUP_2026_ROUNDS.reduce((acc, r) => acc + r.matches.length, 0);
+  const totalMatches = allRounds.reduce((acc, r) => acc + r.matches.length, 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20 animate-in fade-in duration-700">
@@ -207,7 +237,7 @@ export default function AdminResultsPage() {
                     {round.matches.map(match => (
                       <AdminMatchRow
                         key={match.id}
-                        match={match}
+                        match={match as any}
                         savedResult={results[match.id]}
                         onSave={saveResult}
                         onReset={deleteResult}
@@ -240,87 +270,119 @@ function AdminMatchRow({
   onSave,
   onReset,
   isSaving,
-}: {
-  match: Match;
-  savedResult: ResultEntry | undefined;
-  onSave: (id: string, h: string | number, a: string | number) => void;
-  onReset: (id: string) => void;
-  isSaving: boolean;
-}) {
+}: any) {
   const [home, setHome] = useState(savedResult ? String(savedResult.home_score) : '');
   const [away, setAway] = useState(savedResult ? String(savedResult.away_score) : '');
+  const [penaltyWinner, setPenaltyWinner] = useState(savedResult?.penalty_winner || '');
 
   useEffect(() => {
     setHome(savedResult ? String(savedResult.home_score) : '');
     setAway(savedResult ? String(savedResult.away_score) : '');
+    setPenaltyWinner(savedResult?.penalty_winner || '');
   }, [savedResult]);
 
+  const isKnockoutMatch = isNaN(Number(match.id));
+  const isDraw = home !== '' && away !== '' && Number(home) === Number(away);
+
   return (
-    <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 p-6 transition-colors ${
+    <div className={`flex flex-col p-6 transition-colors ${
       savedResult ? 'bg-primary/[0.02]' : 'hover:bg-white/[0.02]'
     }`}>
-      {/* Data / Grupo */}
-      <div className="flex flex-col sm:w-32 flex-shrink-0 text-center sm:text-left">
-        <span className="text-[10px] font-black bg-white/5 text-primary px-3 py-1 rounded-full uppercase tracking-widest w-fit mx-auto sm:mx-0 mb-2">
-          Grupo {match.group}
-        </span>
-        <span className="text-sm font-bold text-white/80">
-          {match.date.split('-').reverse().join('/')}
-        </span>
-        <span className="text-[10px] font-medium text-white/40 uppercase tracking-widest">
-          {match.time}
-        </span>
-      </div>
-
-      {/* Partida (Bandeira - Inputs - Bandeira) */}
-      <div className="flex-1 flex items-center justify-center gap-4 sm:gap-6 w-full max-w-md mx-auto">
-        <div className="flex flex-col items-center gap-1.5 w-24 sm:w-28">
-          <img src={getFlagUrl(match.homeTeam)} className="w-10 h-6 object-cover rounded shadow-sm flag-3d" alt="" />
-          <span className="text-xs font-bold text-white/80 text-center truncate w-full">{match.homeTeam}</span>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 w-full">
+        {/* Data / Grupo */}
+        <div className="flex flex-col sm:w-32 flex-shrink-0 text-center sm:text-left">
+          <span className="text-[10px] font-black bg-white/5 text-primary px-3 py-1 rounded-full uppercase tracking-widest w-fit mx-auto sm:mx-0 mb-2">
+            {isKnockoutMatch ? match.group : `Grupo ${match.group}`}
+          </span>
+          <span className="text-sm font-bold text-white/80">
+            {match.date.split('-').reverse().join('/')}
+          </span>
+          <span className="text-[10px] font-medium text-white/40 uppercase tracking-widest">
+            {match.time}
+          </span>
         </div>
 
-        <div className="flex items-center justify-center gap-2 min-w-[110px]">
-          <input
-            type="number"
-            value={home}
-            onChange={e => setHome(e.target.value)}
-            className="w-12 h-10 bg-black/40 border border-white/10 rounded-lg text-center font-black focus:border-primary transition-all text-white"
-          />
-          <span className="text-white/20 font-black">-</span>
-          <input
-            type="number"
-            value={away}
-            onChange={e => setAway(e.target.value)}
-            className="w-12 h-10 bg-black/40 border border-white/10 rounded-lg text-center font-black focus:border-primary transition-all text-white"
-          />
+        {/* Partida (Bandeira - Inputs - Bandeira) */}
+        <div className="flex-1 flex items-center justify-center gap-4 sm:gap-6 w-full max-w-md mx-auto">
+          <div className="flex flex-col items-center gap-1.5 w-24 sm:w-28">
+            <img src={getFlagUrl(match.homeTeam)} className="w-10 h-6 object-cover rounded shadow-sm flag-3d" alt="" />
+            <span className="text-xs font-bold text-white/80 text-center truncate w-full">{match.homeTeam}</span>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 min-w-[110px]">
+            <input
+              type="number"
+              value={home}
+              onChange={e => setHome(e.target.value)}
+              className="w-12 h-10 bg-black/40 border border-white/10 rounded-lg text-center font-black focus:border-primary transition-all text-white"
+            />
+            <span className="text-white/20 font-black">-</span>
+            <input
+              type="number"
+              value={away}
+              onChange={e => setAway(e.target.value)}
+              className="w-12 h-10 bg-black/40 border border-white/10 rounded-lg text-center font-black focus:border-primary transition-all text-white"
+            />
+          </div>
+
+          <div className="flex flex-col items-center gap-1.5 w-24 sm:w-28">
+            <img src={getFlagUrl(match.awayTeam)} className="w-10 h-6 object-cover rounded shadow-sm flag-3d" alt="" />
+            <span className="text-xs font-bold text-white/80 text-center truncate w-full">{match.awayTeam}</span>
+          </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1.5 w-24 sm:w-28">
-          <img src={getFlagUrl(match.awayTeam)} className="w-10 h-6 object-cover rounded shadow-sm flag-3d" alt="" />
-          <span className="text-xs font-bold text-white/80 text-center truncate w-full">{match.awayTeam}</span>
+        {/* Botões Salvar e Resetar */}
+        <div className="flex items-center justify-center gap-2 flex-shrink-0 w-full sm:w-auto">
+          <button
+            onClick={() => onSave(match.id, home, away, isKnockoutMatch && isDraw ? penaltyWinner : undefined)}
+            disabled={isSaving || (isKnockoutMatch && isDraw && !penaltyWinner)}
+            className="flex-1 sm:flex-none p-2.5 px-4 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-dark transition-all border border-primary/10 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
+            title="Salvar"
+          >
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            <span className="sm:hidden">Salvar</span>
+          </button>
+          <button
+            onClick={() => onReset(match.id)}
+            className="p-2.5 px-4 sm:px-2.5 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/10 flex items-center justify-center gap-2"
+            title="Resetar"
+          >
+            <Trash2 size={16} />
+            <span className="sm:hidden text-xs font-black uppercase tracking-widest">Resetar</span>
+          </button>
         </div>
       </div>
 
-      {/* Botões Salvar e Resetar */}
-      <div className="flex items-center justify-center gap-2 flex-shrink-0 w-full sm:w-auto">
-        <button
-          onClick={() => onSave(match.id, home, away)}
-          disabled={isSaving}
-          className="flex-1 sm:flex-none p-2.5 px-4 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-dark transition-all border border-primary/10 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
-          title="Salvar"
-        >
-          {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-          <span className="sm:hidden">Salvar</span>
-        </button>
-        <button
-          onClick={() => onReset(match.id)}
-          className="p-2.5 px-4 sm:px-2.5 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/10 flex items-center justify-center gap-2"
-          title="Resetar"
-        >
-          <Trash2 size={16} />
-          <span className="sm:hidden text-xs font-black uppercase tracking-widest">Resetar</span>
-        </button>
-      </div>
+      {/* Seletor de Vencedor por Pênaltis (Mata-Mata com Empate) */}
+      {isKnockoutMatch && isDraw && (
+        <div className="flex flex-col items-center gap-2 mt-4 pt-4 border-t border-white/5 animate-in fade-in slide-in-from-top-2 duration-300 w-full">
+          <span className="text-[10px] text-yellow-400 font-black uppercase tracking-widest text-center">
+            Quem se classificou nos Pênaltis / Prorrogação?
+          </span>
+          <div className="flex gap-4">
+            <button
+              onClick={() => setPenaltyWinner(match.homeTeam)}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${
+                penaltyWinner === match.homeTeam
+                  ? 'bg-primary text-dark border-primary glow-primary'
+                  : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              {match.homeTeam}
+            </button>
+            <button
+              onClick={() => setPenaltyWinner(match.awayTeam)}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${
+                penaltyWinner === match.awayTeam
+                  ? 'bg-primary text-dark border-primary glow-primary'
+                  : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              {match.awayTeam}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
