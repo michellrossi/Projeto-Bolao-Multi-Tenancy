@@ -42,7 +42,7 @@ export function isMatchLocked(matchDate: string, matchTime: string, isGroupStage
     const LOCK_TIME = 30 * 60 * 1000;
     return (targetDateTime.getTime() - now.getTime()) <= LOCK_TIME;
   } else {
-    const limitDateTime = new Date('2026-06-28T15:55:00');
+    const limitDateTime = new Date('2026-06-28T16:00:00');
     return now.getTime() >= limitDateTime.getTime();
   }
 }

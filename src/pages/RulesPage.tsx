@@ -19,7 +19,7 @@ export default function RulesPage() {
       desc: "O sistema de palpites possui regras rígidas de horário.",
       points: [
         { label: "Trava: Fase de Grupos", value: "30 min", detail: "Todos os palpites fecham 30 min ANTES do 1º jogo da Copa." },
-        { label: "Trava: Mata-Mata", value: "28/06/2026", detail: "Todos os palpites fecham às 15:55 de 28/06/2026." },
+        { label: "Trava: Mata-Mata", value: "28/06/2026", detail: "Todos os palpites fecham às 16:00 de 28/06/2026." },
         { label: "Alterações", value: "Ilimitadas", detail: "Mude seus palpites quantas vezes quiser até o momento da respectiva trava." }
       ]
     },
