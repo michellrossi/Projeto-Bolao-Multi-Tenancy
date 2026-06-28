@@ -165,3 +165,58 @@ export function getKnockoutTeam(
 
   return placeholder;
 }
+
+export function getUserKnockoutTeam(
+  placeholder: string,
+  predictions: Record<string, { home: number; away: number; penalty_winner?: string }>,
+  knockoutMatches: any[]
+): string {
+  if (!placeholder) return '';
+
+  const winnerMatch = placeholder.match(/Vencedor (?:Jogo )?([M-QF1-3]+)/i);
+  if (winnerMatch) {
+    const prevMatchId = winnerMatch[1];
+    const prevMatch = knockoutMatches.find(m => m.id === prevMatchId);
+    if (!prevMatch) return placeholder;
+
+    const pred = predictions[prevMatchId];
+    if (!pred || pred.home === undefined || pred.away === undefined) return placeholder;
+
+    const homeTeamName = prevMatch.homeTeam || getUserKnockoutTeam(prevMatch.homePlaceholder, predictions, knockoutMatches);
+    const awayTeamName = prevMatch.awayTeam || getUserKnockoutTeam(prevMatch.awayPlaceholder, predictions, knockoutMatches);
+
+    if (pred.home > pred.away) {
+      return homeTeamName;
+    } else if (pred.away > pred.home) {
+      return awayTeamName;
+    } else {
+      return pred.penalty_winner || homeTeamName;
+    }
+  }
+
+  const loserMatch = placeholder.match(/Perdedor (?:Semi )?([M-QF1-3]+)/i);
+  if (loserMatch) {
+    const prevMatchId = loserMatch[1];
+    const prevMatch = knockoutMatches.find(m => m.id === prevMatchId);
+    if (!prevMatch) return placeholder;
+
+    const pred = predictions[prevMatchId];
+    if (!pred || pred.home === undefined || pred.away === undefined) return placeholder;
+
+    const homeTeamName = prevMatch.homeTeam || getUserKnockoutTeam(prevMatch.homePlaceholder, predictions, knockoutMatches);
+    const awayTeamName = prevMatch.awayTeam || getUserKnockoutTeam(prevMatch.awayPlaceholder, predictions, knockoutMatches);
+
+    if (pred.home > pred.away) {
+      return awayTeamName;
+    } else if (pred.away > pred.home) {
+      return homeTeamName;
+    } else {
+      if (pred.penalty_winner === homeTeamName) return awayTeamName;
+      if (pred.penalty_winner === awayTeamName) return homeTeamName;
+      return awayTeamName;
+    }
+  }
+
+  return placeholder;
+}
+

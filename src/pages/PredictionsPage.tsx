@@ -7,7 +7,7 @@ import { getFlagUrl } from '../lib/flags';
 import { useAuth } from '../hooks/useAuth';
 import { useLeague } from '../hooks/useLeague';
 import { supabase } from '../lib/supabase';
-import { isMatchLocked, calculatePoints, getGroupStandings, getKnockoutTeam } from '../lib/scoring';
+import { isMatchLocked, calculatePoints, getGroupStandings, getKnockoutTeam, getUserKnockoutTeam } from '../lib/scoring';
 import { Standings } from '../lib/groups';
 
 const TABS = [...WORLD_CUP_2026_ROUNDS.map(r => r.name), "Mata-Mata"];
@@ -16,10 +16,10 @@ export default function PredictionsPage() {
   const { user } = useAuth();
   const { currentLeagueId, isApproved, loading: leagueLoading } = useLeague();
   const [activeTab, setActiveTab] = useState("1ª Rodada");
-  const [predictions, setPredictions] = useState<Record<string, { home: number; away: number }>>({});
+  const [predictions, setPredictions] = useState<Record<string, { home: number; away: number; penalty_winner?: string }>>({});
   const [results, setResults] = useState<Record<string, { home: number; away: number; penalty_winner?: string }>>({});
   const [loading, setLoading] = useState(true);
-  const [drafts, setDrafts] = useState<Record<string, { home: string; away: string }>>({});
+  const [drafts, setDrafts] = useState<Record<string, { home: string; away: string; penalty_winner?: string }>>({});
   const [savingActive, setSavingActive] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   
@@ -76,8 +76,8 @@ export default function PredictionsPage() {
           .range(0, 199);
 
         if (data) {
-          const predMap: Record<string, { home: number; away: number }> = {};
-          data.forEach(p => predMap[p.match_id] = { home: p.home_score, away: p.away_score });
+          const predMap: Record<string, { home: number; away: number; penalty_winner?: string }> = {};
+          data.forEach(p => predMap[p.match_id] = { home: p.home_score, away: p.away_score, penalty_winner: p.penalty_winner });
           setPredictions(predMap);
         }
       }
@@ -114,12 +114,13 @@ export default function PredictionsPage() {
     };
   }, [user?.id, currentLeagueId, fetchResults, fetchPredictions]);
 
-  const handleDraftChange = (matchId: string, team: 'home' | 'away', value: string) => {
+  const handleDraftChange = (matchId: string, team: 'home' | 'away' | 'penalty_winner', value: string) => {
     setDrafts(prev => ({
       ...prev,
       [matchId]: {
         home: team === 'home' ? value : (prev[matchId]?.home ?? predictions[matchId]?.home?.toString() ?? ''),
         away: team === 'away' ? value : (prev[matchId]?.away ?? predictions[matchId]?.away?.toString() ?? ''),
+        penalty_winner: team === 'penalty_winner' ? value : (prev[matchId]?.penalty_winner ?? predictions[matchId]?.penalty_winner ?? ''),
       }
     }));
   };
@@ -135,9 +136,9 @@ export default function PredictionsPage() {
       if (isDemo && user.id === '00000000-0000-0000-0000-000000000000') {
         const newPreds = { ...predictions };
         Object.entries(drafts).forEach(([matchId, draft]) => {
-          const d = draft as { home: string; away: string };
+          const d = draft as { home: string; away: string; penalty_winner?: string };
           if (d.home !== '' && d.away !== '') {
-            newPreds[matchId] = { home: Number(d.home), away: Number(d.away) };
+            newPreds[matchId] = { home: Number(d.home), away: Number(d.away), penalty_winner: d.penalty_winner };
           }
         });
         setPredictions(newPreds);
@@ -155,6 +156,7 @@ export default function PredictionsPage() {
           match_id: matchId,
           home_score: Number((draft as any).home),
           away_score: Number((draft as any).away),
+          penalty_winner: (draft as any).penalty_winner || null,
           updated_at: new Date().toISOString()
         }));
 
@@ -169,7 +171,7 @@ export default function PredictionsPage() {
       // Update local predictions so they reflect what was saved
       const newPreds = { ...predictions };
       toUpsert.forEach(p => {
-        newPreds[p.match_id] = { home: p.home_score, away: p.away_score };
+        newPreds[p.match_id] = { home: p.home_score, away: p.away_score, penalty_winner: p.penalty_winner || undefined };
       });
       setPredictions(newPreds);
 
@@ -203,11 +205,28 @@ export default function PredictionsPage() {
     );
   }
 
+  // Combina palpites salvos com rascunhos locais na memória para que os próximos jogos
+  // do mata-mata atualizem instantaneamente conforme o usuário digita/salva os placares.
+  const mergedPredictions = useMemo(() => {
+    const merged = { ...predictions };
+    Object.entries(drafts).forEach(([matchId, d]) => {
+      const draftVal = d as any;
+      if (draftVal.home !== '' && draftVal.away !== '') {
+        merged[matchId] = {
+          home: Number(draftVal.home),
+          away: Number(draftVal.away),
+          penalty_winner: draftVal.penalty_winner || undefined
+        };
+      }
+    });
+    return merged;
+  }, [predictions, drafts]);
+
   const currentMatches = activeTab === "Mata-Mata"
     ? KNOCKOUT_MATCHES.map(m => ({
       ...m,
-      homeTeam: m.homeTeam || getKnockoutTeam(m.homePlaceholder, results, KNOCKOUT_MATCHES),
-      awayTeam: m.awayTeam || getKnockoutTeam(m.awayPlaceholder, results, KNOCKOUT_MATCHES),
+      homeTeam: m.homeTeam || getUserKnockoutTeam(m.homePlaceholder, mergedPredictions, KNOCKOUT_MATCHES),
+      awayTeam: m.awayTeam || getUserKnockoutTeam(m.awayPlaceholder, mergedPredictions, KNOCKOUT_MATCHES),
       group: m.phase
     }))
     : activeRound?.matches || [];
@@ -359,11 +378,15 @@ function PredictionRow({ match, prediction, draft, onChange, result }: any) {
   
   const homeVal = draft?.home ?? prediction?.home?.toString() ?? '';
   const awayVal = draft?.away ?? prediction?.away?.toString() ?? '';
+  const penaltyWinner = draft?.penalty_winner ?? prediction?.penalty_winner ?? '';
 
   const points = result && prediction ? calculatePoints(
     { homeScore: Number(prediction.home), awayScore: Number(prediction.away) },
     { homeScore: result.home, awayScore: result.away }
   ) : null;
+
+  const isKnockoutMatch = !isGroupStage;
+  const isDraw = homeVal !== '' && awayVal !== '' && Number(homeVal) === Number(awayVal);
 
   return (
     <tr className={`hover:bg-white/[0.02] transition-colors group ${locked ? 'opacity-70' : ''}`}>
@@ -375,34 +398,67 @@ function PredictionRow({ match, prediction, draft, onChange, result }: any) {
         </div>
       </td>
       <td className="px-6 py-4">
-        <div className="flex items-center justify-center gap-4 sm:gap-6">
-          <div className="flex flex-col items-center gap-1.5 w-24 sm:w-28">
-            <img src={getFlagUrl(match.homeTeam)} className="w-10 h-6 object-cover rounded shadow-sm flag-3d" alt="" />
-            <span className="text-xs font-bold text-white/80 text-center truncate w-full">{match.homeTeam}</span>
-          </div>
-          
-          <div className="flex items-center justify-center gap-2 min-w-[120px]">
-            <input
-              type="number"
-              value={homeVal}
-              onChange={(e) => onChange(match.id, 'home', e.target.value)}
-              disabled={locked}
-              className="w-12 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-lg font-black focus:outline-none focus:border-primary transition-all disabled:opacity-50"
-            />
-            <span className="text-white/20 font-bold">X</span>
-            <input
-              type="number"
-              value={awayVal}
-              onChange={(e) => onChange(match.id, 'away', e.target.value)}
-              disabled={locked}
-              className="w-12 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-lg font-black focus:outline-none focus:border-secondary transition-all disabled:opacity-50"
-            />
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-center gap-4 sm:gap-6">
+            <div className="flex flex-col items-center gap-1.5 w-24 sm:w-28">
+              <img src={getFlagUrl(match.homeTeam)} className="w-10 h-6 object-cover rounded shadow-sm flag-3d" alt="" />
+              <span className="text-xs font-bold text-white/80 text-center truncate w-full">{match.homeTeam}</span>
+            </div>
+            
+            <div className="flex items-center justify-center gap-2 min-w-[120px]">
+              <input
+                type="number"
+                value={homeVal}
+                onChange={(e) => onChange(match.id, 'home', e.target.value)}
+                disabled={locked}
+                className="w-12 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-lg font-black focus:outline-none focus:border-primary transition-all disabled:opacity-50"
+              />
+              <span className="text-white/20 font-bold">X</span>
+              <input
+                type="number"
+                value={awayVal}
+                onChange={(e) => onChange(match.id, 'away', e.target.value)}
+                disabled={locked}
+                className="w-12 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-lg font-black focus:outline-none focus:border-secondary transition-all disabled:opacity-50"
+              />
+            </div>
+
+            <div className="flex flex-col items-center gap-1.5 w-24 sm:w-28">
+              <img src={getFlagUrl(match.awayTeam)} className="w-10 h-6 object-cover rounded shadow-sm flag-3d" alt="" />
+              <span className="text-xs font-bold text-white/80 text-center truncate w-full">{match.awayTeam}</span>
+            </div>
           </div>
 
-          <div className="flex flex-col items-center gap-1.5 w-24 sm:w-28">
-            <img src={getFlagUrl(match.awayTeam)} className="w-10 h-6 object-cover rounded shadow-sm flag-3d" alt="" />
-            <span className="text-xs font-bold text-white/80 text-center truncate w-full">{match.awayTeam}</span>
-          </div>
+          {/* Seletor de Pênaltis para o Usuário */}
+          {isKnockoutMatch && isDraw && (
+            <div className="flex flex-col items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
+              <span className="text-[9px] text-yellow-400 font-black uppercase tracking-widest">Quem classifica nos pênaltis?</span>
+              <div className="flex gap-2">
+                <button
+                  disabled={locked}
+                  onClick={() => onChange(match.id, 'penalty_winner', match.homeTeam)}
+                  className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${
+                    penaltyWinner === match.homeTeam
+                      ? 'bg-primary text-dark border-primary glow-primary'
+                      : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {match.homeTeam}
+                </button>
+                <button
+                  disabled={locked}
+                  onClick={() => onChange(match.id, 'penalty_winner', match.awayTeam)}
+                  className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${
+                    penaltyWinner === match.awayTeam
+                      ? 'bg-primary text-dark border-primary glow-primary'
+                      : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {match.awayTeam}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </td>
       <td className="px-6 py-4 text-center">
@@ -431,17 +487,21 @@ function PredictionCardCompact({ match, prediction, draft, onChange, result }: a
   
   const homeVal = draft?.home ?? prediction?.home?.toString() ?? '';
   const awayVal = draft?.away ?? prediction?.away?.toString() ?? '';
+  const penaltyWinner = draft?.penalty_winner ?? prediction?.penalty_winner ?? '';
 
   const points = result && prediction ? calculatePoints(
     { homeScore: Number(prediction.home), awayScore: Number(prediction.away) },
     { homeScore: result.home, awayScore: result.away }
   ) : null;
 
+  const isKnockoutMatch = !isGroupStage;
+  const isDraw = homeVal !== '' && awayVal !== '' && Number(homeVal) === Number(awayVal);
+
   return (
     <div className={`glass-dark p-4 rounded-[1.5rem] border-white/5 space-y-4 ${locked ? 'opacity-80' : ''}`}>
       <div className="flex justify-between items-center">
         <span className="text-[9px] font-black text-primary uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded-full">
-          Grupo {match.group}
+          {match.group}
         </span>
         <div className="flex items-center gap-2">
           {locked && <Lock size={10} className="text-red-500" />}
@@ -452,34 +512,67 @@ function PredictionCardCompact({ match, prediction, draft, onChange, result }: a
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex-1 flex flex-col items-center gap-1">
-          <img src={getFlagUrl(match.homeTeam)} className="w-8 h-5 object-cover rounded shadow-sm flag-3d" alt="" />
-          <span className="text-[10px] font-bold text-white text-center line-clamp-1">{match.homeTeam}</span>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            value={homeVal}
-            onChange={(e) => onChange(match.id, 'home', e.target.value)}
-            disabled={locked}
-            className="w-10 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-sm font-black focus:outline-none focus:border-primary disabled:opacity-50"
-          />
-          <span className="text-white/20 font-black text-xs">X</span>
-          <input
-            type="number"
-            value={awayVal}
-            onChange={(e) => onChange(match.id, 'away', e.target.value)}
-            disabled={locked}
-            className="w-10 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-sm font-black focus:outline-none focus:border-secondary disabled:opacity-50"
-          />
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1 flex flex-col items-center gap-1">
+            <img src={getFlagUrl(match.homeTeam)} className="w-8 h-5 object-cover rounded shadow-sm flag-3d" alt="" />
+            <span className="text-[10px] font-bold text-white text-center line-clamp-1">{match.homeTeam}</span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={homeVal}
+              onChange={(e) => onChange(match.id, 'home', e.target.value)}
+              disabled={locked}
+              className="w-10 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-sm font-black focus:outline-none focus:border-primary disabled:opacity-50"
+            />
+            <span className="text-white/20 font-black text-xs">X</span>
+            <input
+              type="number"
+              value={awayVal}
+              onChange={(e) => onChange(match.id, 'away', e.target.value)}
+              disabled={locked}
+              className="w-10 h-10 bg-black/40 border border-white/10 rounded-xl text-center text-sm font-black focus:outline-none focus:border-secondary disabled:opacity-50"
+            />
+          </div>
+
+          <div className="flex-1 flex flex-col items-center gap-1">
+            <img src={getFlagUrl(match.awayTeam)} className="w-8 h-5 object-cover rounded shadow-sm flag-3d" alt="" />
+            <span className="text-[10px] font-bold text-white text-center line-clamp-1">{match.awayTeam}</span>
+          </div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center gap-1">
-          <img src={getFlagUrl(match.awayTeam)} className="w-8 h-5 object-cover rounded shadow-sm flag-3d" alt="" />
-          <span className="text-[10px] font-bold text-white text-center line-clamp-1">{match.awayTeam}</span>
-        </div>
+        {/* Seletor de Pênaltis para o Usuário - Mobile */}
+        {isKnockoutMatch && isDraw && (
+          <div className="flex flex-col items-center gap-1.5 border-t border-white/5 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+            <span className="text-[9px] text-yellow-400 font-black uppercase tracking-widest">Classifica nos pênaltis?</span>
+            <div className="flex gap-2">
+              <button
+                disabled={locked}
+                onClick={() => onChange(match.id, 'penalty_winner', match.homeTeam)}
+                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${
+                  penaltyWinner === match.homeTeam
+                    ? 'bg-primary text-dark border-primary glow-primary'
+                    : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10'
+                }`}
+              >
+                {match.homeTeam}
+              </button>
+              <button
+                disabled={locked}
+                onClick={() => onChange(match.id, 'penalty_winner', match.awayTeam)}
+                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${
+                  penaltyWinner === match.awayTeam
+                    ? 'bg-primary text-dark border-primary glow-primary'
+                    : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10'
+                }`}
+              >
+                {match.awayTeam}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {result && (

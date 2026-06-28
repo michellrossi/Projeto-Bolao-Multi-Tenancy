@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { calculatePoints } from '../lib/scoring';
+import { calculatePoints, getKnockoutTeam, getUserKnockoutTeam } from '../lib/scoring';
 import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
+import { KNOCKOUT_MATCHES } from '../lib/knockout';
 import type { UserRanking, ResultsMap, PredictionsMap, LeagueMember } from '../lib/types';
+
 
 /**
  * Hook que encapsula todo o fetching e cálculo do ranking da liga atual.
@@ -21,10 +23,10 @@ export function useRanking(leagueId: string | null) {
 
     try {
       // 1. Resultados oficiais
-      const { data: resultsData } = await supabase.from('results').select('match_id, home_score, away_score');
-      const resultsMap: ResultsMap = {};
+      const { data: resultsData } = await supabase.from('results').select('match_id, home_score, away_score, penalty_winner');
+      const resultsMap: Record<string, { home: number; away: number; penalty_winner?: string }> = {};
       resultsData?.forEach((r: any) => {
-        resultsMap[r.match_id] = { home: r.home_score, away: r.away_score };
+        resultsMap[r.match_id] = { home: r.home_score, away: r.away_score, penalty_winner: r.penalty_winner || undefined };
       });
 
       // 2. Nome da liga
@@ -50,7 +52,7 @@ export function useRanking(leagueId: string | null) {
       while (hasMore) {
         const { data, error } = await supabase
           .from('predictions')
-          .select('user_id, match_id, home_score, away_score')
+          .select('user_id, match_id, home_score, away_score, penalty_winner')
           .eq('league_id', leagueId)
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
@@ -80,10 +82,10 @@ export function useRanking(leagueId: string | null) {
         ] as any;
       }
 
-      const allPredictions: PredictionsMap = {};
+      const allPredictions: Record<string, Record<string, { home: number; away: number; penalty_winner?: string }>> = {};
       allPredsData.forEach(p => {
         if (!allPredictions[p.user_id]) allPredictions[p.user_id] = {};
-        allPredictions[p.user_id][p.match_id] = { home: p.home_score, away: p.away_score };
+        allPredictions[p.user_id][p.match_id] = { home: p.home_score, away: p.away_score, penalty_winner: p.penalty_winner || undefined };
       });
 
       // Mock predictions for demo fallback
@@ -147,6 +149,38 @@ export function useRanking(leagueId: string | null) {
 
             if (matchId !== lastUpdatedMatchId) {
               prevPoints += pts;
+            }
+          }
+        });
+
+        // =====================================================================
+        // PONTO EXTRA POR TIME ACERTADO NO CHAVEAMENTO DO MATA-MATA
+        // Para cada jogo de Oitavas, Quartas, Semis e Finais:
+        // Se o usuário previu o time correto que avançou para aquela vaga (independente
+        // de ter acertado o placar do jogo anterior), ele ganha 1 ponto extra.
+        // =====================================================================
+        const KNOCKOUT_STAGES = ['Oitavas', 'Quartas', 'Semifinais', 'Final'];
+        KNOCKOUT_MATCHES.forEach(m => {
+          if (KNOCKOUT_STAGES.includes(m.phase)) {
+            // 1. Time oficial que de fato chegou e jogou nessa vaga (home/away)
+            const officialHome = m.homeTeam || getKnockoutTeam(m.homePlaceholder, finalResultsMap, KNOCKOUT_MATCHES);
+            const officialAway = m.awayTeam || getKnockoutTeam(m.awayPlaceholder, finalResultsMap, KNOCKOUT_MATCHES);
+
+            // 2. Time que o usuário projetou no seu chaveamento baseado em palpites
+            const userHome = m.homeTeam || getUserKnockoutTeam(m.homePlaceholder, userPreds, KNOCKOUT_MATCHES);
+            const userAway = m.awayTeam || getUserKnockoutTeam(m.awayPlaceholder, userPreds, KNOCKOUT_MATCHES);
+
+            // Valida se o nó é válido (não é placeholder temporário não resolvido)
+            const hasOfficialHome = officialHome && !officialHome.startsWith('Vencedor') && !officialHome.startsWith('Perdedor');
+            const hasOfficialAway = officialAway && !officialAway.startsWith('Vencedor') && !officialAway.startsWith('Perdedor');
+            const hasUserHome = userHome && !userHome.startsWith('Vencedor') && !userHome.startsWith('Perdedor');
+            const hasUserAway = userAway && !userAway.startsWith('Vencedor') && !userAway.startsWith('Perdedor');
+
+            if (hasOfficialHome && hasUserHome && userHome === officialHome) {
+              totalPoints += 1;
+            }
+            if (hasOfficialAway && hasUserAway && userAway === officialAway) {
+              totalPoints += 1;
             }
           }
         });
