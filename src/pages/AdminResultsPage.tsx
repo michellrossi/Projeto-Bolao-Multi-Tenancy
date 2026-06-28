@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -234,16 +234,28 @@ export default function AdminResultsPage() {
                   className="overflow-hidden"
                 >
                   <div className="divide-y divide-white/5 border-t border-white/5">
-                    {round.matches.map(match => (
-                      <AdminMatchRow
-                        key={match.id}
-                        match={match as any}
-                        savedResult={results[match.id]}
-                        onSave={saveResult}
-                        onReset={deleteResult}
-                        isSaving={saving === match.id}
-                      />
-                    ))}
+                    {round.matches.map((match, idx) => {
+                      const showPhase = round.name === "Mata-Mata" && (idx === 0 || round.matches[idx - 1].group !== match.group);
+                      return (
+                        <React.Fragment key={match.id}>
+                          {showPhase && (
+                            <div className="bg-white/10 px-6 py-4">
+                              <h3 className="text-sm font-black text-primary font-lexend uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+                                {match.group}
+                              </h3>
+                            </div>
+                          )}
+                          <AdminMatchRow
+                            match={match as any}
+                            savedResult={results[match.id]}
+                            onSave={saveResult}
+                            onReset={deleteResult}
+                            isSaving={saving === match.id}
+                          />
+                        </React.Fragment>
+                      );
+                    })}
                   </div>
                 </motion.div>
               )}

@@ -273,8 +273,9 @@ export default function PredictionsPage() {
                     <React.Fragment key={match.id}>
                       {showPhase && (
                         <tr>
-                          <td colSpan={3} className="bg-white/5 px-6 py-3">
-                            <h3 className="text-xs font-black text-secondary font-lexend uppercase tracking-widest">
+                          <td colSpan={3} className="bg-white/10 px-6 py-4">
+                            <h3 className="text-sm font-black text-primary font-lexend uppercase tracking-widest flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
                               {match.group}
                             </h3>
                           </td>
@@ -301,7 +302,7 @@ export default function PredictionsPage() {
               return (
                 <React.Fragment key={match.id}>
                   {showPhase && (
-                    <h3 className="text-xs font-black text-secondary font-lexend uppercase tracking-widest mt-6 mb-2 pl-4 border-l-2 border-secondary">
+                    <h3 className="text-sm font-black text-primary font-lexend uppercase tracking-widest mt-8 mb-4 pl-4 border-l-4 border-primary">
                       {match.group}
                     </h3>
                   )}
