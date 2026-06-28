@@ -34,34 +34,33 @@ export const KNOCKOUT_MATCHES: KnockoutMatch[] = [
   { id: "M1",  phase: "Mata-Mata", homePlaceholder: "Argentina",     awayPlaceholder: "Cabo Verde", homeTeam: "Argentina",    awayTeam: "Cabo Verde", date: "2026-07-03", time: "19:00" },
   { id: "M4",  phase: "Mata-Mata", homePlaceholder: "Colômbia",      awayPlaceholder: "Gana",      homeTeam: "Colômbia",      awayTeam: "Gana",      date: "2026-07-03", time: "22:30" },
 
-  // OITAVAS DE FINAL — ordenadas cronologicamente
-  // 04/07
-  { id: "O7", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M13", awayPlaceholder: "Vencedor Jogo M14", date: "2026-07-04", time: "16:00" },
-  { id: "O8", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M15", awayPlaceholder: "Vencedor Jogo M16", date: "2026-07-04", time: "20:00" },
-  // 05/07
-  { id: "O5", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M9",  awayPlaceholder: "Vencedor Jogo M10", date: "2026-07-05", time: "16:00" },
-  { id: "O6", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M11", awayPlaceholder: "Vencedor Jogo M12", date: "2026-07-05", time: "20:00" },
-  // 06/07
-  { id: "O3", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M5",  awayPlaceholder: "Vencedor Jogo M6",  date: "2026-07-06", time: "16:00" },
-  { id: "O4", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M7",  awayPlaceholder: "Vencedor Jogo M8",  date: "2026-07-06", time: "20:00" },
-  // 07/07
-  { id: "O1", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M1",  awayPlaceholder: "Vencedor Jogo M2",  date: "2026-07-07", time: "16:00" },
-  { id: "O2", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M3",  awayPlaceholder: "Vencedor Jogo M4",  date: "2026-07-07", time: "20:00" },
+  // OITAVAS DE FINAL — seguindo o cruzamento exato da imagem
+  // Lado Esquerdo (Chave 1)
+  { id: "O1", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M15", awayPlaceholder: "Vencedor Jogo M16", date: "2026-07-04", time: "16:00" }, // Alemanha/Paraguai vs França/Suécia
+  { id: "O2", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M13", awayPlaceholder: "Vencedor Jogo M14", date: "2026-07-04", time: "20:00" }, // África do Sul/Canadá vs Holanda/Marrocos
+  { id: "O3", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M5",  awayPlaceholder: "Vencedor Jogo M6",  date: "2026-07-05", time: "16:00" }, // Portugal/Croácia vs Espanha/Áustria
+  { id: "O4", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M7",  awayPlaceholder: "Vencedor Jogo M8",  date: "2026-07-05", time: "20:00" }, // EUA/Bósnia vs Bélgica/Senegal
 
-  // QUARTAS DE FINAL — ordenadas cronologicamente
-  // 09/07
-  { id: "Q4", phase: "Quartas", homePlaceholder: "Vencedor O7", awayPlaceholder: "Vencedor O8", date: "2026-07-09", time: "16:00" },
-  // 10/07
+  // Lado Direito (Chave 2)
+  { id: "O5", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M9",  awayPlaceholder: "Vencedor Jogo M10", date: "2026-07-06", time: "16:00" }, // Brasil/Japão vs C. do Marfim/Noruega
+  { id: "O6", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M11", awayPlaceholder: "Vencedor Jogo M12", date: "2026-07-06", time: "20:00" }, // México/Equador vs Inglaterra/R.D. Congo
+  { id: "O7", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M1",  awayPlaceholder: "Vencedor Jogo M2",  date: "2026-07-07", time: "16:00" }, // Argentina/Cabo Verde vs Austrália/Egito
+  { id: "O8", phase: "Oitavas", homePlaceholder: "Vencedor Jogo M3",  awayPlaceholder: "Vencedor Jogo M4",  date: "2026-07-07", time: "20:00" }, // Suíça/Argélia vs Colômbia/Gana
+
+  // QUARTAS DE FINAL — seguindo o cruzamento exato da imagem
+  // Lado Esquerdo (Chave 1)
+  { id: "Q1", phase: "Quartas", homePlaceholder: "Vencedor O1", awayPlaceholder: "Vencedor O2", date: "2026-07-09", time: "16:00" },
   { id: "Q2", phase: "Quartas", homePlaceholder: "Vencedor O3", awayPlaceholder: "Vencedor O4", date: "2026-07-10", time: "16:00" },
-  // 11/07
-  { id: "Q3", phase: "Quartas", homePlaceholder: "Vencedor O5", awayPlaceholder: "Vencedor O6", date: "2026-07-11", time: "16:00" },
-  { id: "Q1", phase: "Quartas", homePlaceholder: "Vencedor O1", awayPlaceholder: "Vencedor O2", date: "2026-07-11", time: "20:00" },
 
-  // SEMIFINAIS — ordenadas cronologicamente
-  { id: "S2", phase: "Semifinais", homePlaceholder: "Vencedor Q3", awayPlaceholder: "Vencedor Q4", date: "2026-07-14", time: "16:00" },
-  { id: "S1", phase: "Semifinais", homePlaceholder: "Vencedor Q1", awayPlaceholder: "Vencedor Q2", date: "2026-07-15", time: "16:00" },
+  // Lado Direito (Chave 2)
+  { id: "Q3", phase: "Quartas", homePlaceholder: "Vencedor O5", awayPlaceholder: "Vencedor O6", date: "2026-07-11", time: "16:00" },
+  { id: "Q4", phase: "Quartas", homePlaceholder: "Vencedor O7", awayPlaceholder: "Vencedor O8", date: "2026-07-11", time: "20:00" },
+
+  // SEMIFINAIS
+  { id: "S1", phase: "Semifinais", homePlaceholder: "Vencedor Q1", awayPlaceholder: "Vencedor Q2", date: "2026-07-14", time: "16:00" }, // Semifinal do Lado Esquerdo
+  { id: "S2", phase: "Semifinais", homePlaceholder: "Vencedor Q3", awayPlaceholder: "Vencedor Q4", date: "2026-07-15", time: "16:00" }, // Semifinal do Lado Direito
 
   // FINAIS
-  { id: "F3", phase: "Final", homePlaceholder: "Perdedor S1", awayPlaceholder: "Perdedor S2", date: "2026-07-18", time: "18:00" },
-  { id: "F1", phase: "Final", homePlaceholder: "Vencedor S1", awayPlaceholder: "Vencedor S2", date: "2026-07-19", time: "16:00" },
+  { id: "F3", phase: "Final", homePlaceholder: "Perdedor S1", awayPlaceholder: "Perdedor S2", date: "2026-07-18", time: "18:00" }, // 3º Lugar
+  { id: "F1", phase: "Final", homePlaceholder: "Vencedor S1", awayPlaceholder: "Vencedor S2", date: "2026-07-19", time: "16:00" }, // Grande Final
 ];
