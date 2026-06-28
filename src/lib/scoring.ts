@@ -118,7 +118,7 @@ export function getKnockoutTeam(
   if (!placeholder) return '';
 
   // 1. Vencedor de um jogo anterior
-  const winnerMatch = placeholder.match(/Vencedor (?:Jogo )?([M-QF1-3]+)/i);
+  const winnerMatch = placeholder.match(/Vencedor (?:Jogo )?([A-Z0-9]+)/i);
   if (winnerMatch) {
     const prevMatchId = winnerMatch[1];
     const prevMatch = knockoutMatches.find(m => m.id === prevMatchId);
@@ -148,7 +148,7 @@ export function getKnockoutTeam(
   }
 
   // 2. Perdedor de um jogo anterior (Disputa de 3º lugar)
-  const loserMatch = placeholder.match(/Perdedor (?:Semi )?([M-QF1-3]+)/i);
+  const loserMatch = placeholder.match(/Perdedor (?:Semi )?([A-Z0-9]+)/i);
   if (loserMatch) {
     const prevMatchId = loserMatch[1];
     const prevMatch = knockoutMatches.find(m => m.id === prevMatchId);
@@ -189,7 +189,7 @@ export function getUserKnockoutTeam(
 ): string {
   if (!placeholder) return '';
 
-  const winnerMatch = placeholder.match(/Vencedor (?:Jogo )?([M-QF1-3]+)/i);
+  const winnerMatch = placeholder.match(/Vencedor (?:Jogo )?([A-Z0-9]+)/i);
   if (winnerMatch) {
     const prevMatchId = winnerMatch[1];
     const prevMatch = knockoutMatches.find(m => m.id === prevMatchId);
@@ -218,7 +218,7 @@ export function getUserKnockoutTeam(
     }
   }
 
-  const loserMatch = placeholder.match(/Perdedor (?:Semi )?([M-QF1-3]+)/i);
+  const loserMatch = placeholder.match(/Perdedor (?:Semi )?([A-Z0-9]+)/i);
   if (loserMatch) {
     const prevMatchId = loserMatch[1];
     const prevMatch = knockoutMatches.find(m => m.id === prevMatchId);
