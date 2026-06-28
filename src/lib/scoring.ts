@@ -127,12 +127,20 @@ export function getKnockoutTeam(
     const res = results[prevMatchId];
     if (!res) return placeholder; // Sem resultado ainda
 
-    const homeTeamName = prevMatch.homeTeam || getKnockoutTeam(prevMatch.homePlaceholder, results, knockoutMatches);
-    const awayTeamName = prevMatch.awayTeam || getKnockoutTeam(prevMatch.awayPlaceholder, results, knockoutMatches);
+    const homeTeamName = prevMatch.homeTeam && !prevMatch.homePlaceholder.includes('Vencedor') && !prevMatch.homePlaceholder.includes('Perdedor')
+      ? prevMatch.homeTeam 
+      : getKnockoutTeam(prevMatch.homePlaceholder, results, knockoutMatches);
 
-    if (res.home > res.away) {
+    const awayTeamName = prevMatch.awayTeam && !prevMatch.awayPlaceholder.includes('Vencedor') && !prevMatch.awayPlaceholder.includes('Perdedor')
+      ? prevMatch.awayTeam 
+      : getKnockoutTeam(prevMatch.awayPlaceholder, results, knockoutMatches);
+
+    const hScore = Number(res.home);
+    const aScore = Number(res.away);
+
+    if (hScore > aScore) {
       return homeTeamName;
-    } else if (res.away > res.home) {
+    } else if (aScore > hScore) {
       return awayTeamName;
     } else {
       return res.penalty_winner || homeTeamName;
@@ -149,12 +157,20 @@ export function getKnockoutTeam(
     const res = results[prevMatchId];
     if (!res) return placeholder;
 
-    const homeTeamName = prevMatch.homeTeam || getKnockoutTeam(prevMatch.homePlaceholder, results, knockoutMatches);
-    const awayTeamName = prevMatch.awayTeam || getKnockoutTeam(prevMatch.awayPlaceholder, results, knockoutMatches);
+    const homeTeamName = prevMatch.homeTeam && !prevMatch.homePlaceholder.includes('Vencedor') && !prevMatch.homePlaceholder.includes('Perdedor')
+      ? prevMatch.homeTeam 
+      : getKnockoutTeam(prevMatch.homePlaceholder, results, knockoutMatches);
 
-    if (res.home > res.away) {
+    const awayTeamName = prevMatch.awayTeam && !prevMatch.awayPlaceholder.includes('Vencedor') && !prevMatch.awayPlaceholder.includes('Perdedor')
+      ? prevMatch.awayTeam 
+      : getKnockoutTeam(prevMatch.awayPlaceholder, results, knockoutMatches);
+
+    const hScore = Number(res.home);
+    const aScore = Number(res.away);
+
+    if (hScore > aScore) {
       return awayTeamName;
-    } else if (res.away > res.home) {
+    } else if (aScore > hScore) {
       return homeTeamName;
     } else {
       if (res.penalty_winner === homeTeamName) return awayTeamName;
@@ -182,8 +198,13 @@ export function getUserKnockoutTeam(
     const pred = predictions[prevMatchId];
     if (!pred || pred.home === undefined || pred.away === undefined || pred.home === '' || pred.away === '') return placeholder;
 
-    const homeTeamName = prevMatch.homeTeam || getUserKnockoutTeam(prevMatch.homePlaceholder, predictions, knockoutMatches);
-    const awayTeamName = prevMatch.awayTeam || getUserKnockoutTeam(prevMatch.awayPlaceholder, predictions, knockoutMatches);
+    const homeTeamName = prevMatch.homeTeam && !prevMatch.homePlaceholder.includes('Vencedor') && !prevMatch.homePlaceholder.includes('Perdedor')
+      ? prevMatch.homeTeam 
+      : getUserKnockoutTeam(prevMatch.homePlaceholder, predictions, knockoutMatches);
+
+    const awayTeamName = prevMatch.awayTeam && !prevMatch.awayPlaceholder.includes('Vencedor') && !prevMatch.awayPlaceholder.includes('Perdedor')
+      ? prevMatch.awayTeam 
+      : getUserKnockoutTeam(prevMatch.awayPlaceholder, predictions, knockoutMatches);
 
     const hScore = Number(pred.home);
     const aScore = Number(pred.away);
@@ -206,8 +227,13 @@ export function getUserKnockoutTeam(
     const pred = predictions[prevMatchId];
     if (!pred || pred.home === undefined || pred.away === undefined || pred.home === '' || pred.away === '') return placeholder;
 
-    const homeTeamName = prevMatch.homeTeam || getUserKnockoutTeam(prevMatch.homePlaceholder, predictions, knockoutMatches);
-    const awayTeamName = prevMatch.awayTeam || getUserKnockoutTeam(prevMatch.awayPlaceholder, predictions, knockoutMatches);
+    const homeTeamName = prevMatch.homeTeam && !prevMatch.homePlaceholder.includes('Vencedor') && !prevMatch.homePlaceholder.includes('Perdedor')
+      ? prevMatch.homeTeam 
+      : getUserKnockoutTeam(prevMatch.homePlaceholder, predictions, knockoutMatches);
+
+    const awayTeamName = prevMatch.awayTeam && !prevMatch.awayPlaceholder.includes('Vencedor') && !prevMatch.awayPlaceholder.includes('Perdedor')
+      ? prevMatch.awayTeam 
+      : getUserKnockoutTeam(prevMatch.awayPlaceholder, predictions, knockoutMatches);
 
     const hScore = Number(pred.home);
     const aScore = Number(pred.away);
