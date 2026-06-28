@@ -42,14 +42,14 @@ export function isMatchLocked(matchDate: string, matchTime: string, isGroupStage
     const LOCK_TIME = 30 * 60 * 1000;
     return (targetDateTime.getTime() - now.getTime()) <= LOCK_TIME;
   } else {
-    const limitDateTime = new Date('2026-06-28T16:00:00');
+    const limitDateTime = new Date('2026-06-28T16:05:00');
     return now.getTime() >= limitDateTime.getTime();
   }
 }
 
 export function getGroupStandings(results: Record<string, GameResult>) {
   const allStats: Record<string, TeamStats> = {};
-  
+
   // Initialize teams
   WORLD_CUP_2026_GROUPS.forEach(group => {
     group.teams.forEach(team => {
@@ -67,14 +67,14 @@ export function getGroupStandings(results: Record<string, GameResult>) {
     if (res && allStats[match.homeTeam] && allStats[match.awayTeam]) {
       const h = res.homeScore;
       const a = res.awayScore;
-      
+
       allStats[match.homeTeam].played++;
       allStats[match.awayTeam].played++;
       allStats[match.homeTeam].goalsFor += h;
       allStats[match.homeTeam].goalsAgainst += a;
       allStats[match.awayTeam].goalsFor += a;
       allStats[match.awayTeam].goalsAgainst += h;
-      
+
       if (h > a) {
         allStats[match.homeTeam].points += 3;
         allStats[match.homeTeam].wins++;
@@ -89,7 +89,7 @@ export function getGroupStandings(results: Record<string, GameResult>) {
         allStats[match.homeTeam].draws++;
         allStats[match.awayTeam].draws++;
       }
-      
+
       allStats[match.homeTeam].goalDifference = allStats[match.homeTeam].goalsFor - allStats[match.homeTeam].goalsAgainst;
       allStats[match.awayTeam].goalDifference = allStats[match.awayTeam].goalsFor - allStats[match.awayTeam].goalsAgainst;
     }
@@ -128,11 +128,11 @@ export function getKnockoutTeam(
     if (!res) return placeholder; // Sem resultado ainda
 
     const homeTeamName = prevMatch.homeTeam && !prevMatch.homePlaceholder.includes('Vencedor') && !prevMatch.homePlaceholder.includes('Perdedor')
-      ? prevMatch.homeTeam 
+      ? prevMatch.homeTeam
       : getKnockoutTeam(prevMatch.homePlaceholder, results, knockoutMatches);
 
     const awayTeamName = prevMatch.awayTeam && !prevMatch.awayPlaceholder.includes('Vencedor') && !prevMatch.awayPlaceholder.includes('Perdedor')
-      ? prevMatch.awayTeam 
+      ? prevMatch.awayTeam
       : getKnockoutTeam(prevMatch.awayPlaceholder, results, knockoutMatches);
 
     const hScore = Number(res.home);
@@ -158,11 +158,11 @@ export function getKnockoutTeam(
     if (!res) return placeholder;
 
     const homeTeamName = prevMatch.homeTeam && !prevMatch.homePlaceholder.includes('Vencedor') && !prevMatch.homePlaceholder.includes('Perdedor')
-      ? prevMatch.homeTeam 
+      ? prevMatch.homeTeam
       : getKnockoutTeam(prevMatch.homePlaceholder, results, knockoutMatches);
 
     const awayTeamName = prevMatch.awayTeam && !prevMatch.awayPlaceholder.includes('Vencedor') && !prevMatch.awayPlaceholder.includes('Perdedor')
-      ? prevMatch.awayTeam 
+      ? prevMatch.awayTeam
       : getKnockoutTeam(prevMatch.awayPlaceholder, results, knockoutMatches);
 
     const hScore = Number(res.home);
@@ -199,11 +199,11 @@ export function getUserKnockoutTeam(
     if (!pred || pred.home === undefined || pred.away === undefined || pred.home === '' || pred.away === '') return placeholder;
 
     const homeTeamName = prevMatch.homeTeam && !prevMatch.homePlaceholder.includes('Vencedor') && !prevMatch.homePlaceholder.includes('Perdedor')
-      ? prevMatch.homeTeam 
+      ? prevMatch.homeTeam
       : getUserKnockoutTeam(prevMatch.homePlaceholder, predictions, knockoutMatches);
 
     const awayTeamName = prevMatch.awayTeam && !prevMatch.awayPlaceholder.includes('Vencedor') && !prevMatch.awayPlaceholder.includes('Perdedor')
-      ? prevMatch.awayTeam 
+      ? prevMatch.awayTeam
       : getUserKnockoutTeam(prevMatch.awayPlaceholder, predictions, knockoutMatches);
 
     const hScore = Number(pred.home);
@@ -228,11 +228,11 @@ export function getUserKnockoutTeam(
     if (!pred || pred.home === undefined || pred.away === undefined || pred.home === '' || pred.away === '') return placeholder;
 
     const homeTeamName = prevMatch.homeTeam && !prevMatch.homePlaceholder.includes('Vencedor') && !prevMatch.homePlaceholder.includes('Perdedor')
-      ? prevMatch.homeTeam 
+      ? prevMatch.homeTeam
       : getUserKnockoutTeam(prevMatch.homePlaceholder, predictions, knockoutMatches);
 
     const awayTeamName = prevMatch.awayTeam && !prevMatch.awayPlaceholder.includes('Vencedor') && !prevMatch.awayPlaceholder.includes('Perdedor')
-      ? prevMatch.awayTeam 
+      ? prevMatch.awayTeam
       : getUserKnockoutTeam(prevMatch.awayPlaceholder, predictions, knockoutMatches);
 
     const hScore = Number(pred.home);
