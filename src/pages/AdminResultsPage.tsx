@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -136,13 +136,26 @@ export default function AdminResultsPage() {
     setExpandedRounds(prev => ({ ...prev, [name]: !prev[name] }));
   };
 
+  const normalizedResults = useMemo(() => {
+    const norm: Record<string, { home: number; away: number; penalty_winner?: string }> = {};
+    Object.entries(results).forEach(([id, r]) => {
+      const entry = r as any;
+      norm[id] = {
+        home: entry.home_score,
+        away: entry.away_score,
+        penalty_winner: entry.penalty_winner || undefined
+      };
+    });
+    return norm;
+  }, [results]);
+
   const knockoutRound: Round = {
     name: "Mata-Mata",
     matches: KNOCKOUT_MATCHES.map(m => ({
       id: m.id,
       group: m.phase,
-      homeTeam: m.homeTeam || getKnockoutTeam(m.homePlaceholder, results, KNOCKOUT_MATCHES),
-      awayTeam: m.awayTeam || getKnockoutTeam(m.awayPlaceholder, results, KNOCKOUT_MATCHES),
+      homeTeam: m.homeTeam || getKnockoutTeam(m.homePlaceholder, normalizedResults, KNOCKOUT_MATCHES),
+      awayTeam: m.awayTeam || getKnockoutTeam(m.awayPlaceholder, normalizedResults, KNOCKOUT_MATCHES),
       date: m.date,
       time: m.time
     }))
