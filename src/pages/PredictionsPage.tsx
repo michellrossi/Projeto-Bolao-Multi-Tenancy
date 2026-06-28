@@ -185,6 +185,23 @@ export default function PredictionsPage() {
     }
   };
 
+  // Combina palpites salvos com rascunhos locais na memória para que os próximos jogos
+  // do mata-mata atualizem instantaneamente conforme o usuário digita/salva os placares.
+  const mergedPredictions = useMemo(() => {
+    const merged = { ...predictions };
+    Object.entries(drafts).forEach(([matchId, d]) => {
+      const draftVal = d as any;
+      if (draftVal.home !== '' && draftVal.away !== '') {
+        merged[matchId] = {
+          home: Number(draftVal.home),
+          away: Number(draftVal.away),
+          penalty_winner: draftVal.penalty_winner || undefined
+        };
+      }
+    });
+    return merged;
+  }, [predictions, drafts]);
+
   if (loading || leagueLoading) return <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
 
   if (!isApproved) {
@@ -204,23 +221,6 @@ export default function PredictionsPage() {
       </div>
     );
   }
-
-  // Combina palpites salvos com rascunhos locais na memória para que os próximos jogos
-  // do mata-mata atualizem instantaneamente conforme o usuário digita/salva os placares.
-  const mergedPredictions = useMemo(() => {
-    const merged = { ...predictions };
-    Object.entries(drafts).forEach(([matchId, d]) => {
-      const draftVal = d as any;
-      if (draftVal.home !== '' && draftVal.away !== '') {
-        merged[matchId] = {
-          home: Number(draftVal.home),
-          away: Number(draftVal.away),
-          penalty_winner: draftVal.penalty_winner || undefined
-        };
-      }
-    });
-    return merged;
-  }, [predictions, drafts]);
 
   const currentMatches = activeTab === "Mata-Mata"
     ? KNOCKOUT_MATCHES.map(m => ({
