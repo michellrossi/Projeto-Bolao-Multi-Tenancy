@@ -168,7 +168,7 @@ export function getKnockoutTeam(
 
 export function getUserKnockoutTeam(
   placeholder: string,
-  predictions: Record<string, { home: number; away: number; penalty_winner?: string }>,
+  predictions: Record<string, { home: number | string; away: number | string; penalty_winner?: string }>,
   knockoutMatches: any[]
 ): string {
   if (!placeholder) return '';
@@ -180,14 +180,17 @@ export function getUserKnockoutTeam(
     if (!prevMatch) return placeholder;
 
     const pred = predictions[prevMatchId];
-    if (!pred || pred.home === undefined || pred.away === undefined) return placeholder;
+    if (!pred || pred.home === undefined || pred.away === undefined || pred.home === '' || pred.away === '') return placeholder;
 
     const homeTeamName = prevMatch.homeTeam || getUserKnockoutTeam(prevMatch.homePlaceholder, predictions, knockoutMatches);
     const awayTeamName = prevMatch.awayTeam || getUserKnockoutTeam(prevMatch.awayPlaceholder, predictions, knockoutMatches);
 
-    if (pred.home > pred.away) {
+    const hScore = Number(pred.home);
+    const aScore = Number(pred.away);
+
+    if (hScore > aScore) {
       return homeTeamName;
-    } else if (pred.away > pred.home) {
+    } else if (aScore > hScore) {
       return awayTeamName;
     } else {
       return pred.penalty_winner || homeTeamName;
@@ -201,14 +204,17 @@ export function getUserKnockoutTeam(
     if (!prevMatch) return placeholder;
 
     const pred = predictions[prevMatchId];
-    if (!pred || pred.home === undefined || pred.away === undefined) return placeholder;
+    if (!pred || pred.home === undefined || pred.away === undefined || pred.home === '' || pred.away === '') return placeholder;
 
     const homeTeamName = prevMatch.homeTeam || getUserKnockoutTeam(prevMatch.homePlaceholder, predictions, knockoutMatches);
     const awayTeamName = prevMatch.awayTeam || getUserKnockoutTeam(prevMatch.awayPlaceholder, predictions, knockoutMatches);
 
-    if (pred.home > pred.away) {
+    const hScore = Number(pred.home);
+    const aScore = Number(pred.away);
+
+    if (hScore > aScore) {
       return awayTeamName;
-    } else if (pred.away > pred.home) {
+    } else if (aScore > hScore) {
       return homeTeamName;
     } else {
       if (pred.penalty_winner === homeTeamName) return awayTeamName;
