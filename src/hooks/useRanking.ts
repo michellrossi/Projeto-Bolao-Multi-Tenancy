@@ -135,6 +135,10 @@ export function useRanking(leagueId: string | null) {
         let missCount = 0;
 
         Object.entries(userPreds).forEach(([matchId, pred]) => {
+          // Zera a fase de grupos: só processa pontos se o jogo pertencer ao mata-mata (IDs que começam com M, O, Q, S, F)
+          const isKnockoutMatch = isNaN(Number(matchId));
+          if (!isKnockoutMatch) return;
+
           const result = finalResultsMap[matchId];
           if (result) {
             const pts = calculatePoints(
