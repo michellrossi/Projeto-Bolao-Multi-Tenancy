@@ -6,9 +6,8 @@ import { getKnockoutTeam } from '../lib/scoring';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { getFlagUrl } from '../lib/flags';
-import { Edit3, LayoutGrid, Calendar } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { KnockoutBracket } from '../components/KnockoutBracket';
 
 const TABS = [...WORLD_CUP_2026_ROUNDS.map(r => r.name), "Mata-Mata"];
 
@@ -17,7 +16,6 @@ export default function TablePage() {
   const [activeTab, setActiveTab] = useState("1ª Rodada");
   const [results, setResults] = useState<Record<string, { home: number; away: number; penalty_winner?: string }>>({});
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'bracket' | 'list'>('bracket');
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -96,99 +94,68 @@ export default function TablePage() {
         </div>
       </div>
 
-      {activeTab === "Mata-Mata" && (
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => setViewMode('bracket')}
-            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 border transition-all ${
-              viewMode === 'bracket'
-                ? 'bg-primary text-dark border-primary'
-                : 'bg-white/5 text-white/60 border-white/5 hover:bg-white/10'
-            }`}
-          >
-            <LayoutGrid size={14} /> Chaveamento
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 border transition-all ${
-              viewMode === 'list'
-                ? 'bg-primary text-dark border-primary'
-                : 'bg-white/5 text-white/60 border-white/5 hover:bg-white/10'
-            }`}
-          >
-            <Calendar size={14} /> Lista Cronológica
-          </button>
-        </div>
-      )}
-
       <AnimatePresence mode="wait">
         <motion.div
-          key={`${activeTab}_${viewMode}`}
+          key={activeTab}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           className="space-y-4"
         >
-          {activeTab === "Mata-Mata" && viewMode === 'bracket' ? (
-            <KnockoutBracket matches={currentMatches as any} results={results} />
-          ) : (
-            <>
-              {/* Desktop Table View */}
-              <div className="hidden md:block glass-dark rounded-[2.5rem] overflow-hidden border-white/5">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-white/5">
-                      <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 w-32">Data/Hora</th>
-                      <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 text-center">Partida</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {currentMatches.map((match, idx) => {
-                      const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx - 1].group !== match.group);
-                      return (
-                        <React.Fragment key={match.id}>
-                          {showPhase && (
-                            <tr>
-                              <td colSpan={2} className="bg-white/10 px-6 py-4">
-                                <h3 className="text-sm font-black text-primary font-lexend uppercase tracking-widest flex items-center gap-2">
-                                  <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
-                                  {match.group}
-                                </h3>
-                              </td>
-                            </tr>
-                          )}
-                          <ResultRow 
-                            match={match as any} 
-                            savedResult={results[match.id]} 
-                          />
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile Cards View */}
-              <div className="md:hidden space-y-4">
+          {/* Desktop Table View */}
+          <div className="hidden md:block glass-dark rounded-[2.5rem] overflow-hidden border-white/5">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-white/5">
+                  <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 w-32">Data/Hora</th>
+                  <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 text-center">Partida</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
                 {currentMatches.map((match, idx) => {
                   const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx - 1].group !== match.group);
                   return (
                     <React.Fragment key={match.id}>
                       {showPhase && (
-                        <h3 className="text-sm font-black text-primary font-lexend uppercase tracking-widest mt-8 mb-4 pl-4 border-l-4 border-primary">
-                          {match.group}
-                        </h3>
+                        <tr>
+                          <td colSpan={2} className="bg-white/10 px-6 py-4">
+                            <h3 className="text-sm font-black text-primary font-lexend uppercase tracking-widest flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+                              {match.group}
+                            </h3>
+                          </td>
+                        </tr>
                       )}
-                      <ResultCard
-                        match={match as any}
-                        savedResult={results[match.id]}
+                      <ResultRow 
+                        match={match as any} 
+                        savedResult={results[match.id]} 
                       />
                     </React.Fragment>
                   );
                 })}
-              </div>
-            </>
-          )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards View */}
+          <div className="md:hidden space-y-4">
+            {currentMatches.map((match, idx) => {
+              const showPhase = activeTab === "Mata-Mata" && (idx === 0 || currentMatches[idx - 1].group !== match.group);
+              return (
+                <React.Fragment key={match.id}>
+                  {showPhase && (
+                    <h3 className="text-sm font-black text-primary font-lexend uppercase tracking-widest mt-8 mb-4 pl-4 border-l-4 border-primary">
+                      {match.group}
+                    </h3>
+                  )}
+                  <ResultCard
+                    match={match as any}
+                    savedResult={results[match.id]}
+                  />
+                </React.Fragment>
+              );
+            })}
+          </div>
         </motion.div>
       </AnimatePresence>
 
