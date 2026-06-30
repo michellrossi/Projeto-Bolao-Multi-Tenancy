@@ -106,7 +106,10 @@ export function useRanking(leagueId: string | null) {
       let lastUpdatedMatchId: string | null = null;
       let maxMatchDateTime = 0;
 
-      const allMatches = WORLD_CUP_2026_ROUNDS.flatMap(r => r.matches);
+      const groupMatches = WORLD_CUP_2026_ROUNDS.flatMap(r => r.matches);
+      const knockoutMatches = KNOCKOUT_MATCHES;
+      const allMatches = [...groupMatches, ...knockoutMatches];
+
       allMatches.forEach(match => {
         if (finalResultsMap[match.id]) {
           const matchDateTime = new Date(`${match.date}T${match.time}`).getTime();

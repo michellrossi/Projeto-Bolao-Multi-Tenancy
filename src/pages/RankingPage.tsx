@@ -44,18 +44,10 @@ export default function RankingPage() {
         <div className="flex items-center gap-2 justify-center text-xs font-black uppercase tracking-[0.2em] text-white/40">
           <Trophy size={14} className="text-primary animate-pulse" /> Premiação da Liga
         </div>
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div className="space-y-1 p-3 rounded-2xl bg-primary/5 border border-primary/10">
+        <div className="flex justify-center text-center">
+          <div className="space-y-1 p-3 px-6 rounded-2xl bg-primary/5 border border-primary/10 min-w-[200px]">
             <p className="text-[9px] font-black uppercase text-primary tracking-wider">1º Lugar</p>
-            <p className="text-sm md:text-base font-black text-white">R$ 702,00</p>
-          </div>
-          <div className="space-y-1 p-3 rounded-2xl bg-white/[0.02] border border-white/5">
-            <p className="text-[9px] font-black uppercase text-white/40 tracking-wider">2º Lugar</p>
-            <p className="text-sm md:text-base font-black text-white">R$ 292,50</p>
-          </div>
-          <div className="space-y-1 p-3 rounded-2xl bg-white/[0.02] border border-white/5">
-            <p className="text-[9px] font-black uppercase text-white/40 tracking-wider">3º Lugar</p>
-            <p className="text-sm md:text-base font-black text-white">R$ 175,50</p>
+            <p className="text-sm md:text-base font-black text-white">R$ 390,00</p>
           </div>
         </div>
       </div>
