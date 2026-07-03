@@ -125,20 +125,72 @@ export function useRanking(leagueId: string | null) {
         lastUpdatedMatchId = 'g1-2';
       }
 
+      // Criar mapa de resultados anterior (sem o último atualizado) para calcular prevPoints de forma consistente
+      const prevResultsMap = { ...finalResultsMap };
+      if (lastUpdatedMatchId) {
+        delete prevResultsMap[lastUpdatedMatchId];
+      }
+
       // 5. Cálculo de pontos + tendência
       const rankingList: UserRanking[] = finalMembers.map(member => {
         const profile = member.users;
         const userId = profile.id;
         const userPreds = allPredictions[userId] ?? {};
 
-        let totalPoints = 0;
-        let prevPoints = 0;
         let exactCount = 0;
         let winnerCount = 0;
         let missCount = 0;
 
+        // Função auxiliar para calcular a pontuação de um usuário em um determinado mapa de resultados (para total e anterior)
+        const getPointsForResults = (rMap: Record<string, { home: number; away: number; penalty_winner?: string }>) => {
+          let pts = 0;
+          Object.entries(userPreds).forEach(([matchId, pred]) => {
+            // Zera a fase de grupos: só processa pontos se o jogo pertencer ao mata-mata (IDs que começam com M, O, Q, S, F)
+            const isKnockoutMatch = isNaN(Number(matchId));
+            if (!isKnockoutMatch) return;
+
+            const result = rMap[matchId];
+            if (result) {
+              const p = calculatePoints(
+                { homeScore: pred.home, awayScore: pred.away },
+                { homeScore: result.home, awayScore: result.away }
+              );
+              pts += p;
+            }
+          });
+
+          // Ponto extra por time acertado no chaveamento do mata-mata
+          const KNOCKOUT_STAGES = ['Oitavas', 'Quartas', 'Semifinais', 'Final'];
+          KNOCKOUT_MATCHES.forEach(m => {
+            if (KNOCKOUT_STAGES.includes(m.phase)) {
+              // 1. Time oficial que de fato chegou e jogou nessa vaga (home/away)
+              const officialHome = m.homeTeam || getKnockoutTeam(m.homePlaceholder, rMap, KNOCKOUT_MATCHES);
+              const officialAway = m.awayTeam || getKnockoutTeam(m.awayPlaceholder, rMap, KNOCKOUT_MATCHES);
+
+              // 2. Time que o usuário projetou no seu chaveamento baseado em palpites
+              const userHome = m.homeTeam || getUserKnockoutTeam(m.homePlaceholder, userPreds, KNOCKOUT_MATCHES);
+              const userAway = m.awayTeam || getUserKnockoutTeam(m.awayPlaceholder, userPreds, KNOCKOUT_MATCHES);
+
+              // Valida se o nó é válido (não é placeholder temporário não resolvido)
+              const hasOfficialHome = officialHome && !officialHome.startsWith('Vencedor') && !officialHome.startsWith('Perdedor');
+              const hasOfficialAway = officialAway && !officialAway.startsWith('Vencedor') && !officialAway.startsWith('Perdedor');
+              const hasUserHome = userHome && !userHome.startsWith('Vencedor') && !userHome.startsWith('Perdedor');
+              const hasUserAway = userAway && !userAway.startsWith('Vencedor') && !userAway.startsWith('Perdedor');
+
+              if (hasOfficialHome && hasUserHome && userHome === officialHome) {
+                pts += 1;
+              }
+              if (hasOfficialAway && hasUserAway && userAway === officialAway) {
+                pts += 1;
+              }
+            }
+          });
+
+          return pts;
+        };
+
+        // Calcula estatísticas básicas baseadas no resultado final
         Object.entries(userPreds).forEach(([matchId, pred]) => {
-          // Zera a fase de grupos: só processa pontos se o jogo pertencer ao mata-mata (IDs que começam com M, O, Q, S, F)
           const isKnockoutMatch = isNaN(Number(matchId));
           if (!isKnockoutMatch) return;
 
@@ -148,49 +200,14 @@ export function useRanking(leagueId: string | null) {
               { homeScore: pred.home, awayScore: pred.away },
               { homeScore: result.home, awayScore: result.away }
             );
-            totalPoints += pts;
-            
             if (pts === 3) exactCount++;
             else if (pts === 1) winnerCount++;
             else missCount++;
-
-            if (matchId !== lastUpdatedMatchId) {
-              prevPoints += pts;
-            }
           }
         });
 
-        // =====================================================================
-        // PONTO EXTRA POR TIME ACERTADO NO CHAVEAMENTO DO MATA-MATA
-        // Para cada jogo de Oitavas, Quartas, Semis e Finais:
-        // Se o usuário previu o time correto que avançou para aquela vaga (independente
-        // de ter acertado o placar do jogo anterior), ele ganha 1 ponto extra.
-        // =====================================================================
-        const KNOCKOUT_STAGES = ['Oitavas', 'Quartas', 'Semifinais', 'Final'];
-        KNOCKOUT_MATCHES.forEach(m => {
-          if (KNOCKOUT_STAGES.includes(m.phase)) {
-            // 1. Time oficial que de fato chegou e jogou nessa vaga (home/away)
-            const officialHome = m.homeTeam || getKnockoutTeam(m.homePlaceholder, finalResultsMap, KNOCKOUT_MATCHES);
-            const officialAway = m.awayTeam || getKnockoutTeam(m.awayPlaceholder, finalResultsMap, KNOCKOUT_MATCHES);
-
-            // 2. Time que o usuário projetou no seu chaveamento baseado em palpites
-            const userHome = m.homeTeam || getUserKnockoutTeam(m.homePlaceholder, userPreds, KNOCKOUT_MATCHES);
-            const userAway = m.awayTeam || getUserKnockoutTeam(m.awayPlaceholder, userPreds, KNOCKOUT_MATCHES);
-
-            // Valida se o nó é válido (não é placeholder temporário não resolvido)
-            const hasOfficialHome = officialHome && !officialHome.startsWith('Vencedor') && !officialHome.startsWith('Perdedor');
-            const hasOfficialAway = officialAway && !officialAway.startsWith('Vencedor') && !officialAway.startsWith('Perdedor');
-            const hasUserHome = userHome && !userHome.startsWith('Vencedor') && !userHome.startsWith('Perdedor');
-            const hasUserAway = userAway && !userAway.startsWith('Vencedor') && !userAway.startsWith('Perdedor');
-
-            if (hasOfficialHome && hasUserHome && userHome === officialHome) {
-              totalPoints += 1;
-            }
-            if (hasOfficialAway && hasUserAway && userAway === officialAway) {
-              totalPoints += 1;
-            }
-          }
-        });
+        const totalPoints = getPointsForResults(finalResultsMap);
+        const prevPoints = lastUpdatedMatchId ? getPointsForResults(prevResultsMap) : totalPoints;
 
         // Determina resultado do palpite na última partida atualizada
         let lastMatchResult: 'exact' | 'winner' | 'miss' | 'none' = 'none';
