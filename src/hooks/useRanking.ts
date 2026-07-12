@@ -144,6 +144,7 @@ export function useRanking(leagueId: string | null) {
         // Função auxiliar para calcular a pontuação de um usuário em um determinado mapa de resultados (para total e anterior)
         const getPointsForResults = (rMap: Record<string, { home: number; away: number; penalty_winner?: string }>) => {
           let pts = 0;
+          let knockoutTeamsPoints = 0;
           Object.entries(userPreds).forEach(([matchId, pred]) => {
             // Zera a fase de grupos: só processa pontos se o jogo pertencer ao mata-mata (IDs que começam com M, O, Q, S, F)
             const isKnockoutMatch = isNaN(Number(matchId));
@@ -182,14 +183,16 @@ export function useRanking(leagueId: string | null) {
 
               if (hasOfficialHome && hasUserHome && userHome === officialHome) {
                 pts += 1;
+                knockoutTeamsPoints += 1;
               }
               if (hasOfficialAway && hasUserAway && userAway === officialAway) {
                 pts += 1;
+                knockoutTeamsPoints += 1;
               }
             }
           });
 
-          return pts;
+          return { total: pts, knockoutTeamsPoints };
         };
 
         // Calcula estatísticas básicas baseadas no resultado final
@@ -212,8 +215,12 @@ export function useRanking(leagueId: string | null) {
           }
         });
 
-        const totalPoints = getPointsForResults(finalResultsMap);
-        const prevPoints = lastUpdatedMatchId ? getPointsForResults(prevResultsMap) : totalPoints;
+        const totalPointsResult = getPointsForResults(finalResultsMap);
+        const prevPointsResult = lastUpdatedMatchId ? getPointsForResults(prevResultsMap) : totalPointsResult;
+
+        const totalPoints = totalPointsResult.total;
+        const prevPoints = prevPointsResult.total;
+        const knockoutTeamsPoints = totalPointsResult.knockoutTeamsPoints;
 
         // Determina resultado do palpite na última partida atualizada
         let lastMatchResult: 'exact' | 'winner' | 'miss' | 'none' = 'none';
@@ -241,6 +248,7 @@ export function useRanking(leagueId: string | null) {
           name: profile.display_name || 'Competidor',
           photo: profile.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
           points: totalPoints,
+          knockoutTeamsPoints,
           trend: 'stable' as const,
           trendValue: 0,
           lastMatchResult,

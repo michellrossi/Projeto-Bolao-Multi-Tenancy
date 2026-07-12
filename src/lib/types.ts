@@ -64,6 +64,7 @@ export interface UserRanking {
   exactCount: number;
   winnerCount: number;
   missCount: number;
+  knockoutTeamsPoints: number;
 }
 
 /** Mapa de resultados indexados por match_id */

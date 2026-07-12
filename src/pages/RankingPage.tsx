@@ -125,6 +125,9 @@ function PodiumCard({
         <p className={`${position === 1 ? 'text-xl text-white' : 'text-sm text-primary'} font-black`}>
           {player.points} pts
         </p>
+        <p className="text-[8.5px] text-blue-400/80 font-black mt-1 uppercase tracking-wider">
+          Times: {player.knockoutTeamsPoints}
+        </p>
       </div>
     </div>
   );
@@ -200,6 +203,7 @@ function RankingRow({
           <div className="text-primary uppercase">CRAVOU: {player.exactCount}</div>
           <div className="text-yellow-400 uppercase">ACERTOU: {player.winnerCount}</div>
           <div className="text-red-500 uppercase">ERROU: {player.missCount}</div>
+          <div className="text-blue-400 uppercase">TIMES: {player.knockoutTeamsPoints}</div>
         </div>
 
         {/* Linha divisória vertical sutil */}
