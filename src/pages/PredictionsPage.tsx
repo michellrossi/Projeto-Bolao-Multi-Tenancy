@@ -7,7 +7,7 @@ import { getFlagUrl } from '../lib/flags';
 import { useAuth } from '../hooks/useAuth';
 import { useLeague } from '../hooks/useLeague';
 import { supabase } from '../lib/supabase';
-import { isMatchLocked, calculatePoints, getGroupStandings, getKnockoutTeam, getUserKnockoutTeam } from '../lib/scoring';
+import { isMatchLocked, calculatePoints, calculateKnockoutMatchPoints, getGroupStandings, getKnockoutTeam, getUserKnockoutTeam } from '../lib/scoring';
 import { Standings } from '../lib/groups';
 
 const TABS = [...WORLD_CUP_2026_ROUNDS.map(r => r.name), "Mata-Mata"];
@@ -306,6 +306,8 @@ export default function PredictionsPage() {
                         draft={drafts[match.id]} 
                         onChange={handleDraftChange} 
                         result={results[match.id]} 
+                        predictions={predictions}
+                        results={results}
                       />
                     </React.Fragment>
                   );
@@ -331,6 +333,8 @@ export default function PredictionsPage() {
                     draft={drafts[match.id]} 
                     onChange={handleDraftChange} 
                     result={results[match.id]} 
+                    predictions={predictions}
+                    results={results}
                   />
                 </React.Fragment>
               );
@@ -372,7 +376,7 @@ export default function PredictionsPage() {
   );
 }
 
-function PredictionRow({ match, prediction, draft, onChange, result }: any) {
+function PredictionRow({ match, prediction, draft, onChange, result, predictions, results }: any) {
   const isGroupStage = !isNaN(Number(match.id));
   const locked = isMatchLocked(match.date, match.time, isGroupStage);
   
@@ -380,9 +384,12 @@ function PredictionRow({ match, prediction, draft, onChange, result }: any) {
   const awayVal = draft?.away ?? prediction?.away?.toString() ?? '';
   const penaltyWinner = draft?.penalty_winner ?? prediction?.penalty_winner ?? '';
 
-  const points = result && prediction ? calculatePoints(
+  const points = result && prediction ? calculateKnockoutMatchPoints(
+    match.id,
     { homeScore: Number(prediction.home), awayScore: Number(prediction.away) },
-    { homeScore: result.home, awayScore: result.away }
+    { homeScore: result.home, awayScore: result.away },
+    predictions,
+    results
   ) : null;
 
   const isKnockoutMatch = !isGroupStage;
@@ -481,7 +488,7 @@ function PredictionRow({ match, prediction, draft, onChange, result }: any) {
   );
 }
 
-function PredictionCardCompact({ match, prediction, draft, onChange, result }: any) {
+function PredictionCardCompact({ match, prediction, draft, onChange, result, predictions, results }: any) {
   const isGroupStage = !isNaN(Number(match.id));
   const locked = isMatchLocked(match.date, match.time, isGroupStage);
   
@@ -489,9 +496,12 @@ function PredictionCardCompact({ match, prediction, draft, onChange, result }: a
   const awayVal = draft?.away ?? prediction?.away?.toString() ?? '';
   const penaltyWinner = draft?.penalty_winner ?? prediction?.penalty_winner ?? '';
 
-  const points = result && prediction ? calculatePoints(
+  const points = result && prediction ? calculateKnockoutMatchPoints(
+    match.id,
     { homeScore: Number(prediction.home), awayScore: Number(prediction.away) },
-    { homeScore: result.home, awayScore: result.away }
+    { homeScore: result.home, awayScore: result.away },
+    predictions,
+    results
   ) : null;
 
   const isKnockoutMatch = !isGroupStage;

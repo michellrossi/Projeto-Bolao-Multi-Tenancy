@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { calculatePoints, getKnockoutTeam, getUserKnockoutTeam } from '../lib/scoring';
+import { calculatePoints, calculateKnockoutMatchPoints, getKnockoutTeam, getUserKnockoutTeam } from '../lib/scoring';
 import { WORLD_CUP_2026_ROUNDS } from '../lib/matches';
 import { KNOCKOUT_MATCHES } from '../lib/knockout';
 import type { UserRanking, ResultsMap, PredictionsMap, LeagueMember } from '../lib/types';
@@ -151,9 +151,12 @@ export function useRanking(leagueId: string | null) {
 
             const result = rMap[matchId];
             if (result) {
-              const p = calculatePoints(
+              const p = calculateKnockoutMatchPoints(
+                matchId,
                 { homeScore: pred.home, awayScore: pred.away },
-                { homeScore: result.home, awayScore: result.away }
+                { homeScore: result.home, awayScore: result.away },
+                userPreds,
+                rMap
               );
               pts += p;
             }
@@ -196,9 +199,12 @@ export function useRanking(leagueId: string | null) {
 
           const result = finalResultsMap[matchId];
           if (result) {
-            const pts = calculatePoints(
+            const pts = calculateKnockoutMatchPoints(
+              matchId,
               { homeScore: pred.home, awayScore: pred.away },
-              { homeScore: result.home, awayScore: result.away }
+              { homeScore: result.home, awayScore: result.away },
+              userPreds,
+              finalResultsMap
             );
             if (pts === 3) exactCount++;
             else if (pts === 1) winnerCount++;
@@ -217,9 +223,12 @@ export function useRanking(leagueId: string | null) {
           const lastResult = finalResultsMap[lastUpdatedMatchId];
           if (lastPred && lastResult) {
             lastMatchPrediction = { home: lastPred.home, away: lastPred.away };
-            const pts = calculatePoints(
+            const pts = calculateKnockoutMatchPoints(
+              lastUpdatedMatchId,
               { homeScore: lastPred.home, awayScore: lastPred.away },
-              { homeScore: lastResult.home, awayScore: lastResult.away }
+              { homeScore: lastResult.home, awayScore: lastResult.away },
+              userPreds,
+              finalResultsMap
             );
             if (pts === 3) lastMatchResult = 'exact';
             else if (pts === 1) lastMatchResult = 'winner';

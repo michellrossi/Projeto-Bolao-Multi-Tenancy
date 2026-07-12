@@ -1,5 +1,6 @@
 import { WORLD_CUP_2026_ROUNDS, Match } from './matches';
 import { WORLD_CUP_2026_GROUPS } from './groups';
+import { KNOCKOUT_MATCHES } from './knockout';
 
 export interface GameResult {
   homeScore: number;
@@ -250,5 +251,41 @@ export function getUserKnockoutTeam(
   }
 
   return placeholder;
+}
+
+export function calculateKnockoutMatchPoints(
+  matchId: string,
+  prediction: GameResult,
+  official: GameResult,
+  userPredictions: Record<string, { home: number | string; away: number | string; penalty_winner?: string }>,
+  officialResults: Record<string, { home: number; away: number; penalty_winner?: string }>
+): number {
+  const isKnockoutMatch = isNaN(Number(matchId));
+  if (!isKnockoutMatch) {
+    return calculatePoints(prediction, official);
+  }
+
+  const match = KNOCKOUT_MATCHES.find(m => m.id === matchId);
+  if (!match) return 0;
+
+  // Obter times oficiais reais que jogaram
+  const officialHome = match.homeTeam || getKnockoutTeam(match.homePlaceholder, officialResults, KNOCKOUT_MATCHES);
+  const officialAway = match.awayTeam || getKnockoutTeam(match.awayPlaceholder, officialResults, KNOCKOUT_MATCHES);
+
+  // Obter times projetados pelo usuário
+  const userHome = match.homeTeam || getUserKnockoutTeam(match.homePlaceholder, userPredictions, KNOCKOUT_MATCHES);
+  const userAway = match.awayTeam || getUserKnockoutTeam(match.awayPlaceholder, userPredictions, KNOCKOUT_MATCHES);
+
+  const hasOfficialHome = officialHome && !officialHome.startsWith('Vencedor') && !officialHome.startsWith('Perdedor');
+  const hasOfficialAway = officialAway && !officialAway.startsWith('Vencedor') && !officialAway.startsWith('Perdedor');
+  const hasUserHome = userHome && !userHome.startsWith('Vencedor') && !userHome.startsWith('Perdedor');
+  const hasUserAway = userAway && !userAway.startsWith('Vencedor') && !userAway.startsWith('Perdedor');
+
+  // Só pontua se o confronto projetado pelo usuário for idêntico ao oficial
+  if (hasOfficialHome && hasOfficialAway && hasUserHome && hasUserAway && userHome === officialHome && userAway === officialAway) {
+    return calculatePoints(prediction, official);
+  }
+
+  return 0;
 }
 
